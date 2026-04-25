@@ -15,6 +15,7 @@
 
 ## Благодарности
 
+- **Silero:** За доступные модели [Github](https://github.com/snakers4/silero-models), [Silero.ai](https://silero.ai/)
 - **Штакет:** За базовый скрипт и исходные материалы [Youtube](https://www.youtube.com/watch?v=r7eI_gON3X0).
 - **Виктор Шацков:** За адаптацию голосов и реализацию автокорректировки скорости [Youtube](https://www.youtube.com/watch?v=JGq7Xxvr5oI).
 
