@@ -1,5 +1,6 @@
 import io
 import os
+import gc
 import sys
 import time
 import random
@@ -10,6 +11,7 @@ from threading import Lock, Event, Thread
 from queue import Queue
 from urllib.parse import unquote
 
+import atexit
 import numpy as np
 import torch
 from flask import Flask, jsonify, request, send_file
@@ -830,12 +832,6 @@ class TTSQueue:
         """Размер очереди"""
         return self.queue.qsize()
     
-    def shutdown(self):
-        """Остановка очереди"""
-        self.running = False
-        for _ in range(self.workers_count):
-            self.queue.put(None)
-
 
 # ==================== FLASK ПРИЛОЖЕНИЕ ====================
 
@@ -867,6 +863,33 @@ model = load_model()
 audio_processor = AudioProcessor(model, Config.DEVICE)
 speed_manager = SpeedManager(SpeedConfig)
 tts_queue = TTSQueue(Config.get_max_workers(), audio_processor)
+
+def cleanup_resources():
+    """Выгрузка модели и очистка ресурсов при завершении"""
+    print("\n[*] Выгрузка модели...")
+    
+    global model, tts_queue
+    
+    # Останавливаем очередь задач
+    if tts_queue:
+        tts_queue.running = False
+        time.sleep(0.3)
+        for _ in range(tts_queue.workers_count):
+            tts_queue.queue.put(None)
+    
+    # Выгружаем модель
+    if model is not None:
+        # Перемещаем на CPU если на GPU
+        if hasattr(model, 'cpu'):
+            model.cpu()
+        del model
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    
+    print("[V] Модель выгружена")
+
+atexit.register(cleanup_resources)
 
 
 # ==================== API ЭНДПОИНТЫ ====================
@@ -1033,8 +1056,8 @@ def health_check():
 
 if __name__ == "__main__":
     print('=' * 70)
-    print(f" Silero TTS сервер (модель {Config.MODEL_PATH})")
-    print(f" Устройство: {Config.DEVICE}", end="")
+    print(f" Silero TTS Server ({Config.MODEL_PATH})")
+    print(f" Device: {Config.DEVICE}", end="")
     
     if Config.DEVICE.type == 'cuda':
         print(f" - {torch.cuda.get_device_name(0)}")
@@ -1042,20 +1065,15 @@ if __name__ == "__main__":
     else:
         print()
     
-    print(f" Потоков: {Config.get_max_workers()}")
+    print(f" Workers: {Config.get_max_workers()}")
     
     speakers_list = ", ".join([f"{s['name']} ({s['style']})" for s in SPEAKERS])
-    print(f" Доступные голоса ({len(SPEAKERS)}): {speakers_list}")
+    print(f" Speakers ({len(SPEAKERS)}): {speakers_list}")
     
-    print("\n API МОНИТОРИНГА:")
-    print("   GET  /voice/autospeed/status - детальная статистика и метрики")
-    print("   GET  /voice/autospeed/config - текущая конфигурация")
-    print("   POST /voice/autospeed/config - изменить настройки")
+    # print("\n API:")
+    # print("   GET  /voice/autospeed/status - детальная статистика и метрики")
+    # print("   GET  /voice/autospeed/config - текущая конфигурация")
+    # print("   POST /voice/autospeed/config - изменить настройки")
     print('=' * 70)
     
-    try:
-        app.run(host=Config.HOST, port=Config.PORT, threaded=True)
-    finally:
-        print("\n[V] Остановка сервера...")
-        tts_queue.shutdown()
-        print("[V] Ресурсы освобождены")
+    app.run(host=Config.HOST, port=Config.PORT, threaded=True)
