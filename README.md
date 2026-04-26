@@ -1,5 +1,7 @@
 WIP. ввиду исправления "Не прерывать" для Luna Translator сервер будет серьёзно переделываться.
 
+[Обсуждение Luna Translator на форуме 4PDA](https://4pda.to/forum/index.php?showtopic=1100472)
+
 # Silero TTS Server
 Сервер синтеза речи на базе модели Silero TTS v5_5_ru.
 
