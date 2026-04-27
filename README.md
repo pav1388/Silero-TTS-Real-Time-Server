@@ -1,4 +1,4 @@
-WIP. ввиду исправления "Не прерывать" для Luna Translator сервер будет серьёзно переделываться.
+WIP. [тестовый CPU сервер для win8+ x64 Всё-в-Одном](https://drive.google.com/file/d/1kp1tDwOIZhDWaOBJdRW2LM-TAidLtUeO/view?usp=drive_link)
 
 [Обсуждение Luna Translator на форуме 4PDA](https://4pda.to/forum/index.php?showtopic=1100472)
 
@@ -18,6 +18,7 @@ WIP. ввиду исправления "Не прерывать" для Luna Tra
 ## Благодарности
 
 - **Silero:** За доступные модели [Github](https://github.com/snakers4/silero-models), [Silero.ai](https://silero.ai/)
+- **HIllya51:** За LunaTranslator [Github](https://github.com/HIllya51/LunaTranslator)
 - **Штакет:** За базовый скрипт и исходные материалы [Youtube](https://www.youtube.com/watch?v=r7eI_gON3X0).
 - **Виктор Шацков:** За адаптацию голосов [Youtube](https://www.youtube.com/watch?v=JGq7Xxvr5oI).
 
@@ -67,7 +68,3 @@ WIP. ввиду исправления "Не прерывать" для Luna Tra
 ## Запуск
 
 Запустите файл `silero_server.py`.
-
-или
-
-[тестовый CPU сервер для win8+ x64 без установки python, зависимости и модели](https://drive.google.com/file/d/1kp1tDwOIZhDWaOBJdRW2LM-TAidLtUeO/view?usp=drive_link)

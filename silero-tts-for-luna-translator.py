@@ -7,7 +7,8 @@ from urllib.parse import unquote
 from functools import lru_cache
 import threading
 
-DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
+# DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
+DEBUG = True
 MAIN_VERSION = "0.1"
 
 class Config:
