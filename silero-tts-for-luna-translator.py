@@ -9,7 +9,7 @@ import threading
 
 # DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
 DEBUG = True
-MAIN_VERSION = "0.1"
+MAIN_VERSION = "0.2b"
 
 class Config:
     MODEL_PATH = "models/v5_5_ru.pt"

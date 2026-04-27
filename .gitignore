@@ -1,5 +1,6 @@
 models/v5_5_ru.pt
 backup/
+todo.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
