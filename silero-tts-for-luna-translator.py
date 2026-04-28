@@ -17,7 +17,7 @@ class Config:
     HOST, PORT = "127.0.0.1", 23456
     MAX_TEXT_LENGTH = 950 # chars
     BASE_SPEED = 1.0
-    CPU_IDLE_TIMEOUT, CPU_MONITOR_INTERVAL, CPU_SAMPLE_DURATION = 20.0, 1.5, 0.1 # sec
+    CPU_IDLE_TIMEOUT, CPU_MONITOR_INTERVAL, CPU_SAMPLE_DURATION = 30.0, 1.5, 0.1 # sec
     CPU_HIGH_THRESHOLD, CPU_CRITICAL_THRESHOLD = 80.0, 95.0 # %
     QUALITY_LEVELS = [
         {"sample_rate": 8000,  "put_accent": False, "put_yo": False, "name": "LOWEST"},
@@ -276,8 +276,8 @@ class AudioProcessor:
             final_pitch = max(-10, min(10, base_pitch + pitch_adjustment))
             pitch_str = [k for k, v in pitch_map.items() if v == final_pitch][0] if final_pitch in pitch_map.values() else "medium"
             
-            processed = self.text_processor.process_text(text) or text
-            ssml = f'<speak><prosody rate="{int(final_speed*100)}%" pitch="{pitch_str}">{processed}</prosody></speak>'
+            processed_text = self.text_processor.process_text(text) or text
+            ssml = f'<speak><prosody rate="{int(final_speed*100)}%" pitch="{pitch_str}">{processed_text}</prosody></speak>'
             
             if DEBUG:
                 print(f"[DEBUG] Quality: {quality['name']} | CPU: {self.cpu_monitor.get_cpu_load():.1f}% | SR: {sample_rate}Hz")
@@ -294,7 +294,7 @@ class AudioProcessor:
             
             if DEBUG and start_time:
                 print(f"[DEBUG] Total: {(time.time()-start_time)*1000:.2f}ms | Audio: {len(audio_np)/sample_rate:.2f}s | RTF: {((time.time()-start_time)*1000) / (len(audio_np)/sample_rate*1000):.2f}x")
-                print(f"[DEBUG] Text length: {len(text)}, text: {text}")
+                print(f"[DEBUG] Text length: {len(text)}, SSML: {ssml}")
             return result
         except Exception as e:
             print(f"[X] Synthesis error: {e}")
@@ -303,15 +303,27 @@ class AudioProcessor:
 
 # ==================== HTTP СЕРВЕР ====================
 class TTSServer:
-    """HTTP сервер для Silero TTS с REST API"""
+    """HTTP сервер"""
     def __init__(self):
         self.app, self.model, self.cpu_monitor, self.audio_processor = Bottle(), None, None, None
         self.setup_routes()
     
     def load_model(self):
         if not os.path.exists(Config.MODEL_PATH):
-            print(f"\n[X] Model not found: {Config.MODEL_PATH}")
-            sys.exit(1)
+            print(f"\n[!] Model not found: {Config.MODEL_PATH}")
+            os.makedirs(os.path.dirname(Config.MODEL_PATH), exist_ok=True)
+            try:
+                import urllib.request
+                url = "https://models.silero.ai/models/tts/ru/v5_5_ru.pt"
+                print(f"[*] Downloading from Sileri.AI (140 Mb). Please wait ...")
+                urllib.request.urlretrieve(url, Config.MODEL_PATH, 
+                    lambda b, bs, ts: print(f"\r {int(b*bs*100/ts)}%", end=''))
+                print(f"\n[V] Model downloaded to {Config.MODEL_PATH}")
+            except Exception as e:
+                print(f"\n[X] Download failed: {e}")
+                print(f"\n[!] Please download manually from: {url}")
+                input(f"[!] and save as: {Config.MODEL_PATH}")
+                sys.exit(1)
         print(f"[*] Loading model '{Config.MODEL_PATH}'... ({Config.DEVICE})")
         package = torch.package.PackageImporter(Config.MODEL_PATH)
         self.model = package.load_pickle("tts_models", "model")
