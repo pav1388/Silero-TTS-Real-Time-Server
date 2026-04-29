@@ -29,6 +29,7 @@ WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](h
 ## Установка
 
 1.1 Установите Python 3.8.10 с [официального сайта](https://www.python.org/downloads/release/python-3810/).
+
 1.2 Установите Python 3.11.9 с [официального сайта](https://www.python.org/downloads/release/python-3119/).
 
 2. Установите необходимые зависимости:
