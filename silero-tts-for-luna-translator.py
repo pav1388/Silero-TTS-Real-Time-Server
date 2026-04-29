@@ -10,13 +10,13 @@ import threading
 
 # DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
 DEBUG = True
-MAIN_VERSION = "0.2-dev"
+MAIN_VERSION = "0.2.1-dev"
 
 # Конфигурация
 class Config:
     MODEL_PATH = "models/v5_5_ru.pt"
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    SAMPLE_RATE = 48000
+    SAMPLE_RATE = 48000 # 8000 24000 48000
     HOST, PORT = "127.0.0.1", 23456
     MAX_TEXT_LENGTH = 950
     CPU_IDLE_TIMEOUT, CPU_MONITOR_INTERVAL, CPU_SAMPLE_DURATION = 30.0, 1.0, 0.07
@@ -24,9 +24,9 @@ class Config:
     QUALITY_LEVELS = [
         {"sample_rate": 8000,  "put_accent": False, "put_yo": False, "name": "LOWEST"},
         {"sample_rate": 8000,  "put_accent": True,  "put_yo": False, "name": "LOW"},
-        {"sample_rate": 24000, "put_accent": False, "put_yo": False, "name": "MEDIUM"},
-        {"sample_rate": 24000, "put_accent": True,  "put_yo": True,  "name": "HIGH"},
-        {"sample_rate": 48000, "put_accent": True,  "put_yo": False, "name": "VERY_HIGH"},
+        {"sample_rate": 24000, "put_accent": False, "put_yo": False, "name": "MEDIUM-LOW"},
+        {"sample_rate": 24000, "put_accent": True,  "put_yo": True,  "name": "MEDIUM"},
+        {"sample_rate": 48000, "put_accent": True,  "put_yo": False, "name": "HIGH"},
         {"sample_rate": 48000, "put_accent": True,  "put_yo": True,  "name": "MAXIMUM"}
     ]
 
@@ -140,7 +140,7 @@ class TextProcessor:
     PUNCT_MAP = {'.': 360, ',': 230, '!': 360, '?': 360, '(': 230, ')': 230, '[': 230, ']': 230, ':': 230, ';': 230, '-': 230}
     ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz")
-    TRANS_MAP = {'ough':'о','augh':'о','eigh':'эй','tion':'шн','shch':'щ','tch':'ч','sch':'ск','scr':'скр','thr':'зр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд','ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ti':'тай','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр','a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'й','z':'з'}
+    TRANS_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','tch':'ч','sch':'ск','scr':'скр','thr':'зр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд','ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ti':'тай','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр','a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'й','z':'з'}
 
     def __init__(self):
         self.base_speed = 1.0
@@ -167,13 +167,18 @@ class TextProcessor:
     # Основной метод
     def process_text(self, text: str) -> str:
         if not text: return ""
+        len_text = len(text)
+        if len_text > Config.MAX_TEXT_LENGTH:
+            len_text = Config.MAX_TEXT_LENGTH
+            text = text[:len_text]
+            if DEBUG: print(f"[DEBUG] Text length truncated to {len_text} chars.")
         text = unquote(text).lower()
         has_latin = any(ch in self.LATIN for ch in text)
-        return f'<speak>{self._proc(text, has_latin)}</speak>'
+        return f'<speak>{self._proc(text, len_text, has_latin)}</speak>'
 
     # Обработка текста
-    def _proc(self, text: str, has_latin: bool) -> str:
-        res, buf, i, n = [], [], 0, len(text)
+    def _proc(self, text: str, len_text: int, has_latin: bool) -> str:
+        res, buf, i, n = [], [], 0, len_text
         while i < n:
             ch = text[i]
             if ch.isdigit():
@@ -258,9 +263,7 @@ class AudioProcessor:
         hdr = b'RIFF' + struct.pack('<I', 36 + sz) + b'WAVEfmt '
         hdr += struct.pack('<IHHIIHH', 16, 1, 1, sr, sr * 2, 2, 16)
         hdr += b'data' + struct.pack('<I', sz)
-        result = hdr + raw
-        del raw
-        return result
+        return hdr + raw
 
     # Основной метод
     def synthesize(self, text, speaker_id, length, pitch_adj):
@@ -274,11 +277,6 @@ class AudioProcessor:
                 raise ValueError(f"Bad Speaker ID: {speaker_id}")
             
             spk = SPEAKERS[speaker_id]
-            speaker_name = spk['name'].strip().lower()
-            valid_speakers = [s['name'].strip().lower() for s in SPEAKERS]
-            if speaker_name not in valid_speakers:
-                raise ValueError(f"Speaker '{speaker_name}' is not supported by this model. Valid: {valid_speakers}")
-
             speed = max(0.1, min(10.0, spk['base_speed'] * (2 ** ((1 - length) * (5 if length >= 1 else 15) / 10))))
             p_map = {"x-low": -10, "low": -4, "medium": 0, "high": 4, "x-high": 10}
             base_p = p_map.get(spk['pitch'], 0)
@@ -289,10 +287,10 @@ class AudioProcessor:
             ssml = self.text_processor.process_text(text)
             
             if DEBUG: 
-                print(f"[DEBUG] Quality: {q['name']} Spk:{speaker_name} Speed:{speed:.2f} Pitch:{p_str} SR:{sr}")
+                print(f"[DEBUG] Quality: {q['name']} Spk:{spk['name']} Speed:{speed:.2f} Pitch:{p_str} SR:{sr}")
                 print(f"[DEBUG] Text len:{len(text)} SSML:{ssml}")
             with torch.no_grad():
-                audio = self.model.apply_tts(ssml_text=ssml, speaker=speaker_name, 
+                audio = self.model.apply_tts(ssml_text=ssml, speaker=spk['name'], 
                     sample_rate=sr, put_accent=q['put_accent'], put_yo=q['put_yo'])
             
             if audio.dim() == 1: audio = audio.unsqueeze(0)
@@ -364,7 +362,7 @@ class TTSServer:
         @self.app.route('/voice/speakers', method='GET')
         def get_speakers():
             response.content_type = 'application/json'
-            print("[HTTP] Request list of speakers from LunaTranslator")
+            print("[HTTP] Request list of speakers from LunaTranslator.")
             return {"vits": [{"id": s["id"], "name": s["name"], "lang": s["lang"]} for s in SPEAKERS]}
         
         @self.app.route('/voice/vits', method='GET')
@@ -372,9 +370,7 @@ class TTSServer:
             text, speaker_id = request.query.text or "", int(request.query.id or 0)
             length, pitch = float(request.query.length or 1.0), float(request.query.pitch or 0)
             if not text: return {"error": "Text is required"}, 400
-            if len(text) > Config.MAX_TEXT_LENGTH:
-                text = text[:Config.MAX_TEXT_LENGTH]
-            print(f"[HTTP] New request. Text length:{len(text)}")
+            print(f"[HTTP] New text request.")
             try:
                 audio_data = self.audio_processor.synthesize(text, speaker_id, length, pitch)
                 response.content_type = 'audio/wav'
@@ -391,6 +387,7 @@ class TTSServer:
         print(f" Device: {str(Config.DEVICE).upper()} | http://{Config.HOST}:{Config.PORT}")
         if DEBUG: print(" DEBUG mode ON")
         print('=' * 60)
+        print("Press Ctrl-C to quit.")
         run(self.app, host=Config.HOST, port=Config.PORT, quiet=True)
 
 # Точка входа
