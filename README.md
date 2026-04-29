@@ -1,4 +1,4 @@
-WIP. [тестовый CPU сервер для win8+ x64 Всё-в-Одном](https://drive.google.com/file/d/1yBYmxAb43OktS8t_-VyOr0bL8weJpiJY/view?usp=sharing)
+WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](https://drive.google.com/file/d/1yBYmxAb43OktS8t_-VyOr0bL8weJpiJY/view?usp=sharing)
 
 Обсуждение - [Luna Translator на форуме 4PDA](https://4pda.to/forum/index.php?showtopic=1100472)
 
@@ -23,11 +23,11 @@ WIP. [тестовый CPU сервер для win8+ x64 Всё-в-Одном](h
 
 ## Требования
 
-- Python 3.11.9 x64
+- Python 3.8.10 x64
 
 ## Установка
 
-1. Установите Python 3.11.9 с [официального сайта](https://www.python.org/downloads/release/python-3119/).
+1. Установите Python 3.8.10 с [официального сайта](https://www.python.org/downloads/release/python-3810/).
 
 2. Установите необходимые зависимости:
    ```bash
@@ -36,7 +36,7 @@ WIP. [тестовый CPU сервер для win8+ x64 Всё-в-Одном](h
 
 3. Установите PyTorch в зависимости от используемого оборудования:
 
-   **Для CPU (размер пакета ~120 Мб):**
+   **Для CPU (размер пакета ~120-180 Мб):**
    ```bash
    pip install torch --index-url https://download.pytorch.org/whl/cpu
    ```

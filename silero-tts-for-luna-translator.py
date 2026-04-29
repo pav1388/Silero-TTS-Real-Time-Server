@@ -10,7 +10,7 @@ import threading
 
 # DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
 DEBUG = True
-MAIN_VERSION = "0.2.1-dev"
+MAIN_VERSION = "0.2.2-dev"
 
 # Конфигурация
 class Config:
@@ -137,16 +137,16 @@ def num_to_words(num: str) -> str:
 
 # Обработка текста с преобразованием в SSML
 class TextProcessor:
-    PUNCT_MAP = {'.': 360, ',': 230, '!': 360, '?': 360, '(': 230, ')': 230, '[': 230, ']': 230, ':': 230, ';': 230, '-': 230}
+    BREAK_TIME_MAP = {'.': 360, ',': 230, '!': 420, '?': 420, '(': 230, ')': 230, '[': 230, ']': 230, ':': 230, ';': 230, '-': 230}
     ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz")
-    TRANS_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','tch':'ч','sch':'ск','scr':'скр','thr':'зр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд','ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ti':'тай','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр','a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'й','z':'з'}
+    TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','tch':'ч','sch':'ск','scr':'скр','thr':'зр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд','ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ti':'тай','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр','a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'й','z':'з'}
 
     def __init__(self):
         self.base_speed = 1.0
         self.base_pitch = "medium"
         self.trie = {}
-        for k, v in self.TRANS_MAP.items():
+        for k, v in self.TRANSLIT_MAP.items():
             node = self.trie
             for ch in k:
                 node = node.setdefault(ch, {})
@@ -186,12 +186,12 @@ class TextProcessor:
             if has_latin and ch in self.LATIN:
                 ni, tr = self._trans(text, i)
                 if tr and tr != ch: buf.append(tr); i = ni; continue
-            if ch in self.PUNCT_MAP:
+            if ch in self.BREAK_TIME_MAP:
                 s = ''.join(buf).strip()
                 if s:
                     keep = ch in '!?'
                     res.append(self._wrap(s + (ch if keep else ""), ch))
-                res.append(f'<break time="{self.PUNCT_MAP[ch]}ms"/>')
+                res.append(f'<break time="{self.BREAK_TIME_MAP[ch]}ms"/>')
                 buf.clear(); i += 1; continue
             if ch.isspace() or ch == ' ':
                 if not buf or buf[-1] != ' ': buf.append(' ')
