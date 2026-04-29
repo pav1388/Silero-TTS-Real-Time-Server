@@ -23,11 +23,13 @@ WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](h
 
 ## Требования
 
-- Python 3.8.10 x64
+- Python 3.8.10 x64 для WIN7+
+- Python 3.11.9 x64 для WIN8+
 
 ## Установка
 
-1. Установите Python 3.8.10 с [официального сайта](https://www.python.org/downloads/release/python-3810/).
+1.1 Установите Python 3.8.10 с [официального сайта](https://www.python.org/downloads/release/python-3810/).
+1.2 Установите Python 3.11.9 с [официального сайта](https://www.python.org/downloads/release/python-3119/).
 
 2. Установите необходимые зависимости:
    ```bash
@@ -41,9 +43,9 @@ WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](h
    pip install torch --index-url https://download.pytorch.org/whl/cpu
    ```
 
-   **Для GPU Nvidia CUDA (размер пакета ~3 Гб, требует ~5 Гб места после распаковки):**
+   **Для GPU Nvidia CUDA (размер пакета ~2.8 Гб, требует ~5 Гб места после распаковки):**
    ```bash
-   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+   pip install torch --index-url https://download.pytorch.org/whl/cu118
    ```
 
 4. При первом запуске сервера разрешите доступ в брандмауэре ОС, если появится соответствующее уведомление.
