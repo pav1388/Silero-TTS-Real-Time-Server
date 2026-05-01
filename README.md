@@ -66,7 +66,7 @@ WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](h
 
 ## Запуск сервера
 
-Откройте файл silero-tts-for-luna-translator.py`.
+Откройте файл `silero-tts-for-luna-translator.py`.
 
 ## Тесты и отладка
 

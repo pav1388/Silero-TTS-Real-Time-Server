@@ -8,7 +8,7 @@ from urllib.parse import unquote
 from functools import lru_cache
 import threading
 
-MAIN_VERSION = "0.4-dev"
+MAIN_VERSION = "0.4.1-dev"
 # DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
 DEBUG = True
 
@@ -195,16 +195,17 @@ class CPUMonitor:
 
 class TextProcessor:
     """обработка текста (SSML, числа, транслитерация)"""
-    pause0 = 130
-    pause1 = 180
-    pause2 = 215
-    pause3 = 320
-    pause4 = 420
-    BREAK_TIME_MAP = {'.': pause3, ',': pause1, '!': pause3, '?': pause3, '(': pause1, ')': pause1, '[': pause1, ']': pause1, ':': pause0, ';': pause2, '—': pause2, '…': pause4}
-    EMOTIONS = {'!': (107, 0), '?': (93, 0)}
+    pause0, pause1, pause2, pause3, pause4 = 130, 180, 215, 320, 480
+    BREAK_TIME_MAP = {'.': pause3, ',': pause1, '!': pause3, '?': pause3, 
+                      '(': pause1, ')': pause1, '[': pause1, ']': pause1, 
+                      ':': pause0, ';': pause2, '—': pause2, '…': pause4}
+    EMOTIONS = {'!': (107, 0), '?': (93, 0)} # знак: (speed в %, pitch от -2 до 2)
     ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz")
-    TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','tch':'ч','sch':'ск','scr':'скр','thr':'зр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд','ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ti':'тай','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр','a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'й','z':'з'}
+    TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
+        'tch':'ч','sch':'ск','scr':'скр','thr':'тр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд',
+        'ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр',
+        'a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'и','z':'з'}
 
     def __init__(self):
         self.base_speed = 1.0
@@ -260,13 +261,18 @@ class TextProcessor:
                     # buf.append(cyr)
                 continue
             if ch in self.BREAK_TIME_MAP:
+                skip = 1
+                if ch == '.' and i + 2 < n and text[i+1] == '.':
+                    if text[i+2] == '.':
+                        ch = '…'
+                        skip = 3
                 s = ''.join(buf).strip()
                 if s:
                     keep = ch in self.EMOTIONS
                     res.append(self._wrap(s + (ch if keep else ""), ch))
                 res.append(f'<break time="{self.BREAK_TIME_MAP[ch]}ms"/>')
                 buf.clear()
-                i += 1
+                i += skip
                 continue
             if ch.isspace() or ch == ' ':
                 if not buf or buf[-1] != ' ': buf.append(' ')
