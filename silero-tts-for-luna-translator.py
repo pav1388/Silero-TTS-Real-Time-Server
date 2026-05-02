@@ -8,7 +8,7 @@ from urllib.parse import unquote
 from functools import lru_cache
 import threading
 
-MAIN_VERSION = "0.4.3-dev"
+MAIN_VERSION = "0.4.4-dev"
 # DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes', 'on')
 DEBUG = True
 
@@ -202,7 +202,7 @@ class TextProcessor:
     TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
         'tch':'ч','sch':'ск','scr':'скр','thr':'тр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд',
         'ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр',
-        '&':'и', '%': ' процентов', # это замены
+        '&':'и', '%': ' процентов', # это замены, пока тут побудут
         'a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'и','z':'з'}
 
     def __init__(self):
@@ -235,7 +235,10 @@ class TextProcessor:
         
         text = unquote(text).lower()
         has_latin = any(ch in self.LATIN for ch in text)
-        return f'<speak>{self._proc(text, len_text, has_latin)}</speak>', len_text
+        processed_body = self._proc(text, len_text, has_latin)
+        base_r = f"{int(self.base_speed * 100)}"
+        base_p = self.base_pitch
+        return f'<speak><prosody rate="{base_r}%" pitch="{base_p}">{processed_body}</prosody></speak>', len_text
 
     def _proc(self, text: str, len_text: int, has_latin: bool) -> str:
         res, buf, i, n = [], [], 0, len_text
@@ -263,8 +266,9 @@ class TextProcessor:
                         skip = 3
                 s = ''.join(buf).strip()
                 if s:
-                    keep = ch in self.EMOTIONS
-                    res.append(self._wrap(s + (ch if keep else ""), ch))
+                    if ch in self.EMOTIONS: text_to_wrap = s + ' ' + ch
+                    else: text_to_wrap = s
+                    res.append(self._wrap(text_to_wrap, ch))
                 res.append(f'<break time="{self.BREAK_TIME_MAP[ch]}ms"/>')
                 buf.clear()
                 i += skip
@@ -309,18 +313,27 @@ class TextProcessor:
     
     def _wrap(self, txt: str, end_punct: str) -> str:
         if not txt: return ""
+        if end_punct not in self.EMOTIONS: return txt
+        
+        sm, pd = self.EMOTIONS[end_punct]
+        emo_r = f"{int(self.base_speed * sm)}"
+        emo_p = self._adj_pitch(self.base_pitch, pd)
+        words = txt.split()
         def attrs(rate, pitch): return f'rate="{rate}%" pitch="{pitch}"'
-        base_r = f"{int(self.base_speed * 100)}"
-        base_p = self.base_pitch
-        if end_punct in self.EMOTIONS:
-            sm, pd = self.EMOTIONS[end_punct]
-            sr, sp = f"{int(self.base_speed * sm)}", self._adj_pitch(base_p, pd)
-            txt = txt[:-1] + ' ' + end_punct
-            words = txt.split()
-            if len(words) < 4: return f'<prosody {attrs(sr, sp)}>{txt}</prosody>'
-            return (f'<prosody {attrs(base_r, base_p)}>{" ".join(words[:-3])} </prosody>'
-                    f'<prosody {attrs(sr, sp)}>{" ".join(words[-3:])}</prosody>')
-        return f'<prosody {attrs(base_r, base_p)}>{txt}</prosody>'
+        
+        if len(words) < 4:
+            return f'<prosody {attrs(emo_r, emo_p)}>{txt}</prosody>'
+        
+        tail_count = max(1, int(len(words) * 0.2))
+        
+        if tail_count < len(words) and words[-1] in ['!', '?'] and tail_count == 1:
+             tail_count = 2
+
+        head_words = words[:-tail_count]
+        tail_words = words[-tail_count:]
+        head_text = " ".join(head_words)
+        tail_text = " ".join(tail_words)
+        return f'{head_text} <prosody {attrs(emo_r, emo_p)}>{tail_text}</prosody>'
 
 
 @lru_cache(maxsize=512)
@@ -507,10 +520,8 @@ class Application:
             self.cpu_monitor.stop()
         
         if self.model:
-            try:
-                ModelLoader.unload_model(self.model, Config.DEVICE)
-            except:
-                pass
+            try: ModelLoader.unload_model(self.model, Config.DEVICE)
+            except: pass
             self.model = None
         
         num_to_words.cache_clear()
@@ -542,12 +553,9 @@ class Application:
         print('=' * 60)
         self.running = True
         
-        try:
-            self.http_server.run(Config.HOST, Config.PORT)
-        except Exception as e:
-            print(f"[ERROR] Server error: {e}")
-        finally:
-            self.stop()
+        try: self.http_server.run(Config.HOST, Config.PORT)
+        except Exception as e: print(f"[ERROR] Server error: {e}")
+        finally: self.stop()
 
 if __name__ == "__main__":
     Application().run()
