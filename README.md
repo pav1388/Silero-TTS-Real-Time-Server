@@ -65,8 +65,8 @@ WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](h
 
 ## Запуск сервера
 
-Запустите файл `silero-tts-for-luna-translator.py` или bat-файл с выбором устройства.
+Запустите файл `silero-tts-rt-server.py` или bat-файл с выбором устройства.
 
 ## Тесты и отладка
 
-Откройте `tts-server-simple-tester.html`, простой HTML интерфейс имитирующий запросы от LunaTranslator.
+Откройте `tts-rt-server-simple-tester.html`, простой HTML интерфейс имитирующий запросы от LunaTranslator.

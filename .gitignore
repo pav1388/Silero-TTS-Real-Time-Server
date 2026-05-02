@@ -1,7 +1,7 @@
 models/*.pt
+releases/
 backup/
 todo.txt
-silero-tts-for-*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
