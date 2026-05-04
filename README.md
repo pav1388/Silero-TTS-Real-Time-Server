@@ -5,7 +5,7 @@ WIP. [тестовый CPU сервер для win7+ x64 Всё-в-Одном](h
 
 Исходный код - [GitHub](https://github.com/pav1388/Silero-TTS-Real-Time-Server/)
 
-# Silero TTS Server
+# Silero TTS Real-Time Server
 Сервер синтеза речи на базе модели `Silero 5.5 ru`.
 
 ## Особенности
