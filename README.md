@@ -6,6 +6,9 @@ WIP. [CPU сервер для win7+ x64 Всё-в-Одном](https://drive.goog
 Исходный код - [GitHub](https://github.com/pav1388/Silero-TTS-Real-Time-Server/)
 
 # Silero TTS Real-Time Server
+
+![](scripts/title.png)
+
 Сервер синтеза речи на базе модели `Silero 5.5 ru`.
 
 ## Особенности
