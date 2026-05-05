@@ -51,13 +51,15 @@ class Config:
     ]
     PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
     SPEAKERS = [
-        {"id": 0, "name": "aidar",   "gender": "male",   "lang": "ru"},
-        {"id": 1, "name": "baya",    "gender": "female", "lang": "ru"},
-        {"id": 2, "name": "kseniya", "gender": "female", "lang": "ru"},
-        {"id": 3, "name": "xenia",   "gender": "female", "lang": "ru"},
-        {"id": 4, "name": "eugene",  "gender": "male",   "lang": "ru"},
-        {"id": 5, "name": "RANDOM",  "gender": "",       "lang": "ru"},
-        {"id": 6, "name": "HASH",    "gender": "",       "lang": "ru"},
+        {"id": 0, "name": "aidar",     "gender": "male",        "lang": "ru"},
+        {"id": 1, "name": "baya",      "gender": "female",      "lang": "ru"},
+        {"id": 2, "name": "kseniya",   "gender": "female",      "lang": "ru"},
+        {"id": 3, "name": "xenia",     "gender": "female",      "lang": "ru"},
+        {"id": 4, "name": "eugene",    "gender": "male",        "lang": "ru"},
+        {"id": 5, "name": "RANDOM",    "gender": "both",        "lang": "ru"},
+        {"id": 6, "name": "RANDOM_M",  "gender": "only_male",   "lang": "ru"},
+        {"id": 7, "name": "RANDOM_F",  "gender": "only_female", "lang": "ru"},
+        {"id": 8, "name": "HASH",      "gender": "both",        "lang": "ru"},
     ]
     
 
@@ -664,17 +666,20 @@ class HTTPServer:
                 return {"error": "Text is required"}
             
             self.r_count += 1
-            
-            if speaker_id == 5:
+
+            if speaker_id == 5:  # RANDOM both
                 speaker_id = (int(time.time() * 1000000) + self.r_count) % 5
-            
-            if speaker_id == 6:
-                t = text[:500]
+            elif speaker_id == 6:  # RANDOM only_male
+                speaker_id = [0, 4][(int(time.time() * 1000000) + self.r_count) % 2]
+            elif speaker_id == 7:  # RANDOM only_female
+                speaker_id = [1, 2, 3][(int(time.time() * 1000000) + self.r_count) % 3]
+            elif speaker_id == 8:  # HASH both
+                t = text[:200]
                 h = 5381
                 for c in t:
                     h = ((h << 5) + h) ^ ord(c)
                 speaker_id = (h & 0x7fffffff) % 5
-            
+
             if streaming.lower() in ('true', '1', 'yes', 'on'):
                 return self.tts_service.synthesize_stream(text, speaker_id, speed, pitch, vol_boost, self.r_count)
             else:
