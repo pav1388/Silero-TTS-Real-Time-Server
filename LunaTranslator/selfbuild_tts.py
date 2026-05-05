@@ -3,6 +3,7 @@
 
 from myutils.config import urlpathjoin
 from tts.basettsclass import TTSbase, SpeechParam
+import time
 
 
 class TTS(TTSbase):
