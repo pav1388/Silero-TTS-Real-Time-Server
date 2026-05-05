@@ -8,7 +8,7 @@ from urllib.parse import unquote
 from functools import lru_cache
 import threading, logging
 
-MAIN_VERSION = "0.6.5"
+MAIN_VERSION = "0.6.6"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 
@@ -55,7 +55,9 @@ class Config:
         {"id": 1, "name": "baya",    "gender": "female", "lang": "ru"},
         {"id": 2, "name": "kseniya", "gender": "female", "lang": "ru"},
         {"id": 3, "name": "xenia",   "gender": "female", "lang": "ru"},
-        {"id": 4, "name": "eugene",  "gender": "male",   "lang": "ru"}
+        {"id": 4, "name": "eugene",  "gender": "male",   "lang": "ru"},
+        {"id": 5, "name": "RANDOM",  "gender": "",       "lang": "ru"},
+        {"id": 6, "name": "HASH",    "gender": "",       "lang": "ru"},
     ]
     
 
@@ -91,7 +93,7 @@ class ModelLoader:
                 import urllib.request
                 logger.info("Downloading model (~140Mb)...")
                 urllib.request.urlretrieve(Config.MODEL_URL, model_path, 
-                    lambda b, bs, ts: logger.debug(f"Download: {int(b*bs*100/ts)}%"))
+                    lambda b, bs, ts: print(f"\r {int(b*bs*100/ts)}%", end=''))
                 logger.info("Model downloaded.")
             except Exception as e:
                 logger.error(f"Download failed: {e}")
@@ -587,10 +589,7 @@ class TTSService:
     
     def synthesize_speech(self, text: str, speaker_id: int, speed_percent: int, pitch_level: str, vol_boost: float) -> bytes:
         t_start = time.time() if DEBUG else None
-        
-        if not (0 <= speaker_id < len(Config.SPEAKERS)): 
-            raise ValueError(f"Bad Speaker ID: {speaker_id}")
-        
+        if not (0 <= speaker_id < 5): speaker_id = 0
         self.cpu_monitor.record_activity()
         q = self.cpu_monitor.get_current_quality_config()
         sr = min(Config.SAMPLE_RATE, q["sample_rate"])
@@ -665,6 +664,16 @@ class HTTPServer:
                 return {"error": "Text is required"}
             
             self.r_count += 1
+            
+            if speaker_id == 5:
+                speaker_id = (int(time.time() * 1000000) + self.r_count) % 5
+            
+            if speaker_id == 6:
+                t = text[:500]
+                h = 5381
+                for c in t:
+                    h = ((h << 5) + h) ^ ord(c)
+                speaker_id = (h & 0x7fffffff) % 5
             
             if streaming.lower() in ('true', '1', 'yes', 'on'):
                 return self.tts_service.synthesize_stream(text, speaker_id, speed, pitch, vol_boost, self.r_count)

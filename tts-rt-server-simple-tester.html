@@ -238,6 +238,14 @@
             width: 0%;
             transition: width 0.3s;
         }
+        .speaker-badge {
+            font-size: 10px;
+            margin-left: 8px;
+            padding: 0 4px;
+            background: #808080;
+            color: white;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
@@ -338,7 +346,9 @@
         1: { "vol_boost": 1.5, "base_speed": 100, "base_pitch": "low",     "name": "baya", "gender": "F" },
         2: { "vol_boost": 0,   "base_speed": 100, "base_pitch": "medium",  "name": "kseniya", "gender": "F" },
         3: { "vol_boost": 0.5, "base_speed": 100, "base_pitch": "medium",  "name": "xenia", "gender": "F" },
-        4: { "vol_boost": -1,  "base_speed": 87,  "base_pitch": "high",    "name": "eugene", "gender": "M" }
+        4: { "vol_boost": -1,  "base_speed": 87,  "base_pitch": "high",    "name": "eugene", "gender": "M" },
+        5: { "vol_boost": 0,   "base_speed": 100, "base_pitch": "medium",  "name": "RANDOM", "gender": "?" },
+        6: { "vol_boost": 0,   "base_speed": 100, "base_pitch": "medium",  "name": "HASH", "gender": "?" }
     };
     
     var SPEAKERS = [
@@ -346,7 +356,9 @@
         { id: 1, name: "baya", display: "1 baya F ru" },
         { id: 2, name: "kseniya", display: "2 kseniya F ru" },
         { id: 3, name: "xenia", display: "3 xenia F ru" },
-        { id: 4, name: "eugene", display: "4 eugene M ru" }
+        { id: 4, name: "eugene", display: "4 eugene M ru" },
+        { id: 5, name: "RANDOM", display: "5 RANDOM ru" },
+        { id: 6, name: "HASH", display: "6 HASH ru" }
     ];
     
     var speedValue = 0.0;
@@ -395,10 +407,14 @@
             var spk = SPEAKERS[i];
             var preset = VOICE_PRESETS[spk.id];
             var presetText = '';
-            if (preset) {
+            if (preset && spk.id < 5) {
                 presetText = '<span class="speaker-preset-info">vol=' + preset.vol_boost + 
                             'dB | spd=' + preset.base_speed + 
                             '% | ptch=' + preset.base_pitch + '</span>';
+            } else if (spk.id == 5) {
+                presetText = '<span class="speaker-preset-info">каждый запрос — случайный голос</span>';
+            } else if (spk.id == 6) {
+                presetText = '<span class="speaker-preset-info">выбор голоса зависит от текста</span>';
             }
             var checkedAttr = (i === 0) ? ' checked="checked"' : '';
             html += '<div class="speaker-item" onclick="document.getElementById(\'spk_' + spk.id + '\').click();">' +
@@ -570,7 +586,6 @@
         }
         
         if (isStreamMode()) {
-            // В режиме стриминга открываем и ждем загрузки
             fetch(url)
                 .then(function(response) {
                     if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -621,20 +636,14 @@
         }
         
         try {
-            // Для стриминга используем нативный механизм браузера.
-            // Просто устанавливаем src. Браузер сам начнет загружать и играть по мере поступления данных.
-            // Это работает лучше всего для WAV.
-            
             audioPlayer.src = url;
             audioPlayer.style.display = 'block';
-            audioPlayer.load(); // Начинаем загрузку
+            audioPlayer.load();
             
-            // Пытаемся запустить
             var playPromise = audioPlayer.play();
             
             if (playPromise !== undefined) {
                 playPromise.then(_ => {
-                    // Воспроизведение началось
                     if (streaming) {
                         progressFill.style.width = '100%';
                         showStatus('Воспроизведение началось (поток)', false);
@@ -652,10 +661,7 @@
                 });
             }
             
-            audioPlayer.onended = function() {
-                // Можно очистить src, если нужно
-            };
-
+            audioPlayer.onended = function() {};
         } catch (error) {
             console.error('Error:', error);
             showStatus('Ошибка: ' + error.message, true);
