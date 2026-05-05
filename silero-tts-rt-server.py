@@ -1,14 +1,16 @@
 # silero-tts-rt-server.py
 # pav13
 
-import os, sys, time, ctypes, struct, re, psutil, signal, torch, numpy as np
-from bottle import Bottle, request, response, run, hook
+import ctypes, logging, os, platform, re, signal, struct, sys, threading, time
+import numpy as np
+import psutil
+import torch
+from bottle import Bottle, hook, request, response, run
+from functools import lru_cache
 from num2words import num2words
 from urllib.parse import unquote
-from functools import lru_cache
-import threading, logging
 
-MAIN_VERSION = "0.6.6"
+MAIN_VERSION = "0.6.7"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 
@@ -69,22 +71,35 @@ class ModelLoader:
     def setup_torch(device):
         torch.backends.cudnn.benchmark = True
         torch.backends.cudnn.deterministic = False
+        
         if device.type == 'cpu':
-            try: 
-                cores = psutil.cpu_count(logical=False)
-                if cores is None: cores = os.cpu_count()
-            except: 
-                cores = os.cpu_count()
-            if cores is None: cores = 1 
-            n_threads = 2 if (cores and cores > 1) else 1
+            try:
+                cores = psutil.cpu_count(logical=False) or psutil.cpu_count(logical=True) or 1
+            except:
+                cores = os.cpu_count() or 1
+            n_threads = 2 if cores > 1 else 1
             torch.set_num_threads(n_threads)
             torch.set_num_interop_threads(1)
-            logger.info(f"CPU Threads: {n_threads} | Detected cores: {cores}")
+            logger.info(f"Device: CPU | Threads: {n_threads} | Cores: {cores}")
         
-        if device.type == 'cuda':
+        elif device.type == 'cuda':
+            logger.info(f"Device: {torch.cuda.get_device_name(0)} | VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
             torch.cuda.set_device(0)
             torch.cuda.empty_cache()
-            logger.info(f"GPU: {torch.cuda.get_device_name(0)} | Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+            
+            if DEBUG:
+                logger.info(f"CUDA: {torch.version.cuda} | cuDNN: {torch.backends.cudnn.version()}")
+                props = torch.cuda.get_device_properties(0)
+                logger.info(f"Capability: {props.major}.{props.minor} | SMs: {props.multi_processor_count}")
+        
+        if DEBUG:
+            try:
+                mem = psutil.virtual_memory()
+                logger.info(f"RAM: {mem.total/1e9:.1f} GB | Free: {mem.available/1e9:.1f} GB")
+                logger.info(f"PyTorch: {torch.__version__} | Python: {sys.version.split()[0]}")
+                logger.info(f"OS: {platform.system()} {platform.release()} | Arch: {platform.machine()}")
+            except:
+                pass
     
     @staticmethod
     def download_model(model_path: str):
@@ -224,7 +239,7 @@ class TextProcessor:
     TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
         'tch':'ч','sch':'ск','scr':'скр','thr':'тр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд',
         'ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр',
-        '&':'и','a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'и','z':'з'}
+        'a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'и','z':'з','&':'и'}
 
     def __init__(self):
         self.speed_percent = 100
@@ -266,7 +281,7 @@ class TextProcessor:
                 ni, tr = self._trans(text, i)
                 if tr and tr != ch: buf.append(tr)
                 i = ni
-				# word_start = i
+                # word_start = i
                 # while i < n and text[i] in LATIN: i += 1
                 # lat = text[word_start:i]
                 # cyr = translit(lat, 'ru')
@@ -438,7 +453,7 @@ class AudioSynthesizer:
                 audio = self.model.apply_tts(
                     ssml_text=ssml, speaker=speaker_name, sample_rate=sample_rate, 
                     put_accent=put_accent, put_yo=put_yo,
-                    put_stress_homo=put_stress_homo, put_yo_homo=put_stress_homo)
+                    put_stress_homo=put_stress_homo, put_yo_homo=put_yo_homo)
             
                 if self.device.type == 'cuda':
                     self.inference_count += 1
@@ -471,29 +486,25 @@ class TTSService:
     
     def synthesize_stream(self, text, speaker_id, speed, pitch, vol_boost, r_count):
         sentences = re.split(r'(?<=[.!?…])\s+', text)
-
         result = []
         append = result.append
 
         for sentence in sentences:
             sentence = sentence.strip()
-            if not sentence:
-                continue
+            if not sentence: continue
 
             if len(sentence) <= 200:
                 append(sentence)
                 continue
 
             parts = re.split(r'(?<=[,;:—])\s+', sentence)
-
             current = []
             cur_len = 0
             cur_join = " ".join
 
             for part in parts:
                 part = part.strip()
-                if not part:
-                    continue
+                if not part: continue
 
                 if cur_len and cur_len < 60:
                     current.append(part)
@@ -515,8 +526,7 @@ class TTSService:
         sentences = result
 
         if not sentences:
-            response.status = 400
-            return {"error": "No valid sentences found"}
+            raise ValueError("No valid sentences found")
         
         logger.info(f"Stream request #{r_count}: {len(sentences)} sentences")
         
@@ -527,7 +537,6 @@ class TTSService:
 
         def generate():
             first = True
-
             for i, sentence in enumerate(sentences):
                 try:
                     if DEBUG:
@@ -539,7 +548,6 @@ class TTSService:
 
                     if len(wav) > 44 and wav[:4] == b'RIFF':
                         offset = 12
-
                         while offset < len(wav) - 8:
                             chunk_id = wav[offset:offset+4]
                             chunk_size = struct.unpack('<I', wav[offset+4:offset+8])[0]
@@ -547,10 +555,8 @@ class TTSService:
                             if chunk_id == b'data':
                                 if first:
                                     header = bytearray(wav[:offset+8])
-
                                     struct.pack_into('<I', header, 4, 0xFFFFFFFF)
                                     struct.pack_into('<I', header, offset+4, 0xFFFFFFFF)
-
                                     yield bytes(header)
                                     first = False
 
@@ -558,37 +564,23 @@ class TTSService:
                                 break
 
                             offset += 8 + chunk_size
-
                     else:
                         yield wav
 
                 except Exception as e:
                     logger.error(f"Error sentence {i+1}: {e}")
                     continue
-
+            
             logger.debug("All sentences processed")
-
-        response.content_type = 'application/octet-stream'
-        response.headers['Cache-Control'] = 'no-cache'
-        response.headers['X-Accel-Buffering'] = 'no'
-
+        
         return generate()
     
     def synthesize_once(self, text, speaker_id, speed, pitch, vol_boost, r_count):
         logger.info(f"Speech request #{r_count}")
         if DEBUG: logger.debug(f"spkr={speaker_id}, spd={speed}%, ptch={pitch}, vlm={vol_boost}dB.")
-        
-        try:
-            audio_data = self.synthesize_speech(text, speaker_id, speed, pitch, vol_boost)
-            response.content_type = 'audio/wav'
-            response.headers['Content-Length'] = str(len(audio_data))
-            return audio_data
-        except Exception as e:
-            logger.error(f"Synthesis failed: {e}")
-            response.status = 500
-            response.content_type = 'text/plain'
-            return str(e)
-    
+        audio_data = self.synthesize_speech(text, speaker_id, speed, pitch, vol_boost)
+        return audio_data
+
     def synthesize_speech(self, text: str, speaker_id: int, speed_percent: int, pitch_level: str, vol_boost: float) -> bytes:
         t_start = time.time() if DEBUG else None
         if not (0 <= speaker_id < 5): speaker_id = 0
@@ -680,10 +672,28 @@ class HTTPServer:
                     h = ((h << 5) + h) ^ ord(c)
                 speaker_id = (h & 0x7fffffff) % 5
 
-            if streaming.lower() in ('true', '1', 'yes', 'on'):
-                return self.tts_service.synthesize_stream(text, speaker_id, speed, pitch, vol_boost, self.r_count)
-            else:
-                return self.tts_service.synthesize_once(text, speaker_id, speed, pitch, vol_boost, self.r_count)
+            try:
+                if streaming.lower() in ('true', '1', 'yes', 'on'):
+                    gen = self.tts_service.synthesize_stream(text, speaker_id, speed, pitch, vol_boost, self.r_count)
+                    response.content_type = 'application/octet-stream'
+                    response.headers['Cache-Control'] = 'no-cache'
+                    response.headers['X-Accel-Buffering'] = 'no'
+                    return gen
+                else:
+                    audio_data = self.tts_service.synthesize_once(text, speaker_id, speed, pitch, vol_boost, self.r_count)
+                    response.content_type = 'audio/wav'
+                    response.headers['Content-Length'] = str(len(audio_data))
+                    return audio_data
+                    
+            except ValueError as ve:
+                logger.warning(f"Validation error: {ve}")
+                response.status = 400
+                return {"error": str(ve)}
+            except Exception as e:
+                logger.error(f"Synthesis failed: {e}")
+                response.status = 500
+                response.content_type = 'text/plain'
+                return str(e)
         
         @self.app.route('/silero/restart', method='POST')
         def restart():
@@ -807,12 +817,12 @@ class Application:
             except: pass
         
         self.warmup()
-        print('=' * 55)
+        print('=' * 60)
         print(f"  Silero TTS Real-Time Server v{MAIN_VERSION} by pav13")
-        print(f"  Device: {str(Config.DEVICE).upper()}")
-        print(f"  URL: http://{Config.HOST}:{Config.PORT}")
+        print("   GitHub: github.com/pav1388/Silero-TTS-Real-Time-Server")
+        print(f"    Server URL: http://{Config.HOST}:{Config.PORT}")
         if DEBUG: print("  DEBUG mode ON")
-        print('=' * 55)
+        print('=' * 60)
         print("READY")
         self.running = True
         

@@ -61,7 +61,7 @@ class TTS(TTSbase):
         elif speaker_id == 7:  # RANDOM only_female
             speaker_id = [1, 2, 3][int(time.time() * 1000000) % 3]
         elif speaker_id == 8:  # HASH both
-            t = text[:200]
+            t = content[:500]
             h = 5381
             for c in t:
                 h = ((h << 5) + h) ^ ord(c)
