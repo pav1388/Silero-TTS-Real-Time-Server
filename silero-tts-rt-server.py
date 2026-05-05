@@ -745,6 +745,8 @@ class Application:
     
     def restart(self):
         if not self.running: return
+        print("[INFO] Restarting application...")
+        
         self.running = False
         
         if self.cpu_monitor:
@@ -756,7 +758,6 @@ class Application:
             self.model = None
         
         num_to_words.cache_clear()
-        print("[INFO] Restarting application...")
         time.sleep(1)
         python = sys.executable
         os.execl(python, python, *sys.argv)

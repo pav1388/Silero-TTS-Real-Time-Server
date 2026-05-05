@@ -35,17 +35,17 @@ xcopy "tts-rt-server-simple-tester.html" "dist\%FOLDERNAME%\"
 xcopy "LunaTranslator\*" "dist\%FOLDERNAME%\LunaTranslator\" /E /I
 
 rename dist\%FOLDERNAME% "%RELEASE_DIR%"
-rename dist releases
+if not exist releases mkdir releases
+move "dist\%RELEASE_DIR%" "releases\%RELEASE_DIR%"
 
 set RUN_DIR=releases\%RELEASE_DIR%
-
 (
 echo @echo off
 echo %FOLDERNAME%.exe --debug
 echo pause
 ) > "%RUN_DIR%\_run_debug.bat"
 
-rmdir /s /q build __pycache__ 2>nul
+rmdir /s /q build __pycache__ dist 2>nul
 del /s /q *.pyc *.spec *.manifest 2>nul
 
 echo.
