@@ -122,8 +122,7 @@ class ModelLoader:
     def load_model(model_path: str, device):
         logger.info(f"Loading model '{model_path}'...")
         try:
-            package = torch.package.PackageImporter(model_path)
-            model = package.load_pickle("tts_models", "model")
+            model = torch.package.PackageImporter(model_path).load_pickle("tts_models", "model")
             model.to(device)
             logger.info("OK")
             return model
@@ -233,7 +232,7 @@ class TextProcessor:
     BREAK_TIME_MAP = {'.': pause4, ',': pause2, '!': pause4, '?': pause4, 
                       '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
                       ':': pause1, ';': pause3, '—': pause3, '…': pause5}
-    EMOTIONS = {'!': (107, 0), '?': (93, 0)} # 'знак': (speed в %, pitch от -2 до 2)
+    EMOTIONS = {'!': (7, 0), '?': (-7, 0)} # 'знак': (speed в %, pitch от -2 до 2)
     ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz&")
     TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
@@ -388,7 +387,7 @@ class TextProcessor:
         if end_punct not in self.EMOTIONS: return text
         
         sm, pd = self.EMOTIONS[end_punct]
-        emo_r = f"{int(self.speed_percent * sm / 100)}"
+        emo_r = f"{int(self.speed_percent + sm)}"
         pitch_order = Config.PITCH_ORDER
         try:
             idx = max(0, min(len(pitch_order) - 1, pitch_order.index(self.pitch_level) + pd))

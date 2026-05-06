@@ -1,15 +1,12 @@
-WIP. [CPU сервер для win7+ x64 Всё-в-Одном](https://drive.google.com/file/d/1yBYmxAb43OktS8t_-VyOr0bL8weJpiJY/view?usp=sharing) - обновляемая ссылка
-
-
-Обсуждение - [Luna Translator на форуме 4PDA](https://4pda.to/forum/index.php?showtopic=1100472&view=findpost&p=143241146)
-
-Исходный код - [GitHub](https://github.com/pav1388/Silero-TTS-Real-Time-Server/)
-
 # Silero TTS Real-Time Server
 
 ![](scripts/title.png)
 
 Сервер синтеза речи на базе модели `Silero 5.5 ru`.
+
+WIP. [CPU сервер для win7+ x64 Всё-в-Одном](https://drive.google.com/file/d/1yBYmxAb43OktS8t_-VyOr0bL8weJpiJY/view?usp=sharing) - обновляемая ссылка.  
+Обсуждение - [Luna Translator на форуме 4PDA](https://4pda.to/forum/index.php?showtopic=1100472) / [Silero TTS Real-Time Server на форуме 4PDA](https://4pda.to/forum/index.php?showtopic=1121680).  
+Исходный код - [GitHub](https://github.com/pav1388/Silero-TTS-Real-Time-Server/).
 
 ## Особенности
 
