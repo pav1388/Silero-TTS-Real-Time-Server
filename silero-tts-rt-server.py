@@ -10,7 +10,7 @@ from functools import lru_cache
 from num2words import num2words
 from urllib.parse import unquote
 
-MAIN_VERSION = "0.6.7"
+MAIN_VERSION = "0.7.0"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 
@@ -24,6 +24,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+try:
+    from cpu_monitor import CPUMonitor
+    HAS_CPU_MONITOR = True
+except ImportError:
+    HAS_CPU_MONITOR = False
+    CPUMonitor = None
+    logger.warning("cpu_monitor.py not found. Speech quality always 'MAX'.")
+
+
 class Config:
     """Конфигурация приложения"""
     if CUDA:
@@ -32,37 +41,21 @@ class Config:
         DEVICE = torch.device('cpu')
     MODEL_PATH = "models/v5_5_ru.pt"
     MODEL_URL = "https://models.silero.ai/models/tts/ru/v5_5_ru.pt"
-    SAMPLE_RATE = 48000
     HOST, PORT = "127.0.0.1", 23457
+    MAX_SAMPLE_RATE = 48000  # 48000, 24000, 8000
     MAX_TEXT_LENGTH = 900
-    CPU_IDLE_TIMEOUT, CPU_MONITOR_INTERVAL, CPU_SAMPLE_DURATION = 30.0, 1.0, 0.07 # sec
-    CPU_HIGH_THRESHOLD, CPU_CRITICAL_THRESHOLD = 85.0, 95.0 # %
-    QUALITY_LEVELS = [
-        {"sample_rate": 8000,  "put_accent": False, "put_yo": False,
-                "put_stress_homo": False, "put_yo_homo": False, "name": "LOWEST"},
-        {"sample_rate": 8000,  "put_accent": True,  "put_yo": False,
-                "put_stress_homo": True,  "put_yo_homo": False, "name": "LOW"},
-        {"sample_rate": 24000, "put_accent": False, "put_yo": False,
-                "put_stress_homo": False, "put_yo_homo": False, "name": "MED-LOW"},
-        {"sample_rate": 24000, "put_accent": True,  "put_yo": True,
-                "put_stress_homo": True,  "put_yo_homo": True,  "name": "MED"},
-        {"sample_rate": 48000, "put_accent": True,  "put_yo": False,
-                "put_stress_homo": True,  "put_yo_homo": False, "name": "HIGH"},
-        {"sample_rate": 48000, "put_accent": True,  "put_yo": True,
-                "put_stress_homo": True,  "put_yo_homo": True,  "name": "MAX"}
-    ]
     PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
-    SPEAKERS = [
-        {"id": 0, "name": "aidar",     "gender": "male",        "lang": "ru"},
-        {"id": 1, "name": "baya",      "gender": "female",      "lang": "ru"},
-        {"id": 2, "name": "kseniya",   "gender": "female",      "lang": "ru"},
-        {"id": 3, "name": "xenia",     "gender": "female",      "lang": "ru"},
-        {"id": 4, "name": "eugene",    "gender": "male",        "lang": "ru"},
-        {"id": 5, "name": "RANDOM",    "gender": "both",        "lang": "ru"},
-        {"id": 6, "name": "RANDOM_M",  "gender": "only_male",   "lang": "ru"},
-        {"id": 7, "name": "RANDOM_F",  "gender": "only_female", "lang": "ru"},
-        {"id": 8, "name": "HASH",      "gender": "both",        "lang": "ru"},
-    ]
+    MAX_QUALITY_CONFIG = {"sample_rate": 48000, "put_accent": True,  "put_yo": True,
+            "put_stress_homo": True,  "put_yo_homo": True,  "name": "CPU Monitor disabled"}
+    SPEAKERS = []
+    REAL_SPEAKERS_COUNT = 0
+    SPEAKERS_INFO = {
+        "aidar": {"gender": "male", "lang": "ru"},
+        "baya": {"gender": "female", "lang": "ru"},
+        "kseniya": {"gender": "female", "lang": "ru"},
+        "eugene": {"gender": "male", "lang": "ru"},
+        "xenia": {"gender": "female", "lang": "ru"},
+    }
     
 
 class ModelLoader:
@@ -125,6 +118,29 @@ class ModelLoader:
             model = torch.package.PackageImporter(model_path).load_pickle("tts_models", "model")
             model.to(device)
             logger.info("OK")
+            model_speakers = model.speakers
+            Config.SPEAKERS = [
+                {"id": idx, "name": name, 
+                 "gender": Config.SPEAKERS_INFO.get(name, {}).get("gender", "n/d"),
+                 "lang": Config.SPEAKERS_INFO.get(name, {}).get("lang", "n/d")}
+                for idx, name in enumerate(model_speakers)
+            ]
+            
+            Config.REAL_SPEAKERS_COUNT = len(model_speakers)
+            
+            special_speakers = [
+                {"id": len(model_speakers),     "name": "RANDOM",    "gender": "both",   "lang": "ru"},
+                {"id": len(model_speakers) + 1, "name": "RANDOM_M",  "gender": "male",   "lang": "ru"},
+                {"id": len(model_speakers) + 2, "name": "RANDOM_F",  "gender": "female", "lang": "ru"},
+                {"id": len(model_speakers) + 3, "name": "HASH",      "gender": "both",   "lang": "ru"},
+            ]
+            Config.SPEAKERS.extend(special_speakers)
+            
+            if DEBUG:
+                logger.debug(f"Loaded {len(model_speakers)} speakers from model:")
+                for spk in Config.SPEAKERS[:len(model_speakers)]:
+                    logger.debug(f"  - {spk['name']}: {spk['lang']}, {spk['gender']};")
+            
             return model
         except Exception as e:
             logger.error("FAIL")
@@ -145,85 +161,6 @@ class ModelLoader:
         except Exception as e:
             logger.error("FAIL")
             raise e
-
-class CPUMonitor:
-    """мониторинг загрузки CPU"""
-    def __init__(self):
-        self.current_quality_level = len(Config.QUALITY_LEVELS) - 1
-        self.current_load, self.last_change_time, self.max_level = 0.0, 0, len(Config.QUALITY_LEVELS) - 1
-        self.lock, self.running, self.load_history, self.max_history_size = threading.Lock(), False, [], 3
-        self.min_change_interval = 1.5
-        self.monitor_thread = None
-        self.last_activity_time = 0
-    
-    def start(self):
-        with self.lock:
-            if self.running: return
-            self.last_activity_time = time.time()
-            self.running = True
-            self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
-            self.monitor_thread.start()
-            logger.debug("CPU monitoring ON")
-    
-    def stop(self):
-        with self.lock:
-            if not self.running: return
-            self.running = False
-            logger.debug("CPU monitoring OFF")
-    
-    def record_activity(self):
-        self.last_activity_time = time.time()
-        if not self.running: self.start()
-    
-    def _check_idle_and_stop(self):
-        if time.time() - self.last_activity_time >= Config.CPU_IDLE_TIMEOUT:
-            self.stop()
-            return True
-        return False
-    
-    def _get_cpu_load(self) -> float:
-        try: return psutil.cpu_percent(interval=Config.CPU_SAMPLE_DURATION)
-        except: return 0.0
-    
-    def _add_to_history(self, value: float):
-        self.load_history.append(value)
-        if len(self.load_history) > self.max_history_size: self.load_history.pop(0)
-    
-    def _get_average_load(self) -> float:
-        return sum(self.load_history) / len(self.load_history) if self.load_history else 0.0
-    
-    def _calculate_target_quality(self, avg_load: float) -> int:
-        if avg_load >= Config.CPU_CRITICAL_THRESHOLD: return 0
-        if avg_load >= Config.CPU_HIGH_THRESHOLD:
-            load_ratio = (avg_load - Config.CPU_HIGH_THRESHOLD) / (Config.CPU_CRITICAL_THRESHOLD - Config.CPU_HIGH_THRESHOLD)
-            return max(0, self.max_level - int(load_ratio * self.max_level))
-        return self.max_level
-    
-    def _monitor_loop(self):
-        while self.running:
-            try:
-                if self._check_idle_and_stop(): break
-                cpu_load = self._get_cpu_load()
-                with self.lock:
-                    self._add_to_history(cpu_load)
-                    avg_load = self._get_average_load()
-                    self.current_load = avg_load
-                    target_level = self._calculate_target_quality(avg_load)
-                    now = time.time()
-                    if target_level != self.current_quality_level and now - self.last_change_time >= self.min_change_interval:
-                        old_level = self.current_quality_level
-                        self.current_quality_level += 1 if target_level > self.current_quality_level else -1
-                        self.current_quality_level = max(0, min(self.current_quality_level, self.max_level))
-                        self.last_change_time = now
-                        if DEBUG: logger.debug(f"Quality {'UP' if self.current_quality_level > old_level else 'DOWN'} to Lvl {self.current_quality_level} LOAD {avg_load:.1f}%")
-                time.sleep(Config.CPU_MONITOR_INTERVAL)
-            except: time.sleep(5)
-    
-    def get_current_quality_config(self) -> dict:
-        with self.lock: return Config.QUALITY_LEVELS[self.current_quality_level].copy()
-    
-    def get_cpu_load(self) -> float:
-        with self.lock: return self.current_load
 
 
 class TextProcessor:
@@ -480,10 +417,40 @@ class TTSService:
         self.audio_synthesizer = AudioSynthesizer(model, device, cpu_monitor)
         self.cpu_monitor = cpu_monitor
     
-    def generate_speaker_names(self):
-        return {"silero": [{"id": s["id"], "name": s["name"], "gender": s["gender"], "lang": s["lang"]} for s in Config.SPEAKERS]}
+    def _resolve_speaker(self, speaker_id: int, text: str = "") -> tuple:
+        real_speakers_count = Config.REAL_SPEAKERS_COUNT
+
+        if speaker_id == real_speakers_count: # RANDOM (оба пола)
+            speaker_id = int(time.time() * 100000) % real_speakers_count
+        elif speaker_id == real_speakers_count + 1: # RANDOM_M (только мужские)
+            male_speakers = [i for i, s in enumerate(Config.SPEAKERS[:real_speakers_count]) if s.get('gender') == 'male']
+            if male_speakers:
+                speaker_id = male_speakers[int(time.time() * 100000) % len(male_speakers)]
+            else:
+                speaker_id = int(time.time() * 100000) % real_speakers_count
+        elif speaker_id == real_speakers_count + 2: # RANDOM_F (только женские)
+            female_speakers = [i for i, s in enumerate(Config.SPEAKERS[:real_speakers_count]) if s.get('gender') == 'female']
+            if female_speakers:
+                speaker_id = female_speakers[int(time.time() * 100000) % len(female_speakers)]
+            else:
+                speaker_id = int(time.time() * 100000) % real_speakers_count
+        elif speaker_id == real_speakers_count + 3: # HASH (на основе текста)
+            t = text[:500] if text else str(time.time())
+            h = 5381
+            for c in t:
+                h = ((h << 5) + h) ^ ord(c)
+            speaker_id = (h & 0x7fffffff) % real_speakers_count
+        
+        if not (0 <= speaker_id < real_speakers_count):
+            speaker_id = 0
+        
+        return speaker_id, Config.SPEAKERS[speaker_id]
+    
+    def speakers_list(self):
+        return {"silero": Config.SPEAKERS.copy()}
     
     def synthesize_stream(self, text, speaker_id, speed, pitch, vol_boost, r_count):
+        resolved_speaker_id, speaker = self._resolve_speaker(speaker_id, text)
         sentences = re.split(r'(?<=[.!?…])\s+', text)
         result = []
         append = result.append
@@ -527,10 +494,9 @@ class TTSService:
         if not sentences:
             raise ValueError("No valid sentences found")
         
-        logger.info(f"Stream request #{r_count}: {len(sentences)} sentences")
+        logger.info(f"Stream request #{r_count}: {len(sentences)} sentences.")
         
         if DEBUG:
-            logger.debug(f"spkr={speaker_id}, spd={speed}%, ptch={pitch}, vlm={vol_boost}dB.")
             for i, s in enumerate(sentences):
                 logger.debug(f"  [{i+1}] {s[:80]}{'...' if len(s) > 80 else ''}")
 
@@ -541,8 +507,8 @@ class TTSService:
                     if DEBUG:
                         logger.debug(f"Synth {i+1}/{len(sentences)}")
 
-                    wav = self.synthesize_speech(
-                        sentence, speaker_id, speed, pitch, vol_boost
+                    wav = self._synthesize_speech(
+                        sentence, resolved_speaker_id, speaker, speed, pitch, vol_boost
                     )
 
                     if len(wav) > 44 and wav[:4] == b'RIFF':
@@ -575,29 +541,36 @@ class TTSService:
         return generate()
     
     def synthesize_once(self, text, speaker_id, speed, pitch, vol_boost, r_count):
-        logger.info(f"Speech request #{r_count}")
-        if DEBUG: logger.debug(f"spkr={speaker_id}, spd={speed}%, ptch={pitch}, vlm={vol_boost}dB.")
-        audio_data = self.synthesize_speech(text, speaker_id, speed, pitch, vol_boost)
+        resolved_speaker_id, speaker = self._resolve_speaker(speaker_id, text)
+        
+        logger.info(f"Speech request #{r_count}.")
+        
+        audio_data = self._synthesize_speech(
+            text, resolved_speaker_id, speaker, speed, pitch, vol_boost
+        )
         return audio_data
 
-    def synthesize_speech(self, text: str, speaker_id: int, speed_percent: int, pitch_level: str, vol_boost: float) -> bytes:
+    def _synthesize_speech(self, text: str, speaker_id: int, speaker: dict, 
+                                 speed_percent: int, pitch_level: str, vol_boost: float) -> bytes:
         t_start = time.time() if DEBUG else None
-        if not (0 <= speaker_id < 5): speaker_id = 0
-        self.cpu_monitor.record_activity()
-        q = self.cpu_monitor.get_current_quality_config()
-        sr = min(Config.SAMPLE_RATE, q["sample_rate"])
         
-        spk = Config.SPEAKERS[speaker_id]
+        if self.cpu_monitor:
+            self.cpu_monitor.record_activity()
+            q = self.cpu_monitor.get_current_quality_config()
+        else:
+            q = Config.MAX_QUALITY_CONFIG
+        
+        sr = min(Config.MAX_SAMPLE_RATE, q["sample_rate"])
         
         self.text_processor.set_ssml_params(speed_percent, pitch_level)
         ssml, len_text = self.text_processor.process_text(text)
         
         if DEBUG: 
-            logger.debug(f"N:{spk['name']} S:{speed_percent}% P:{pitch_level} Vol:{vol_boost}dB Q: {q['name']} SR:{sr}")
+            logger.debug(f"N:{speaker['name']} S:{speed_percent}% P:{pitch_level} Vol:{vol_boost}dB SR:{sr} Q:{q['name']}")
             logger.debug(f"L:{len_text} SSML:{ssml}")
         
         wav_bytes = self.audio_synthesizer.synthesize(
-            ssml, spk['name'], sr,
+            ssml, speaker['name'], sr,
             q['put_accent'], q['put_yo'], q['put_stress_homo'], q['put_yo_homo'],
             vol_boost
         )
@@ -629,28 +602,28 @@ class HTTPServer:
             response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With'
             response.headers['Access-Control-Max-Age'] = '86400'
         
-        @self.app.route('/silero/speakers', method='OPTIONS')
-        @self.app.route('/silero/speak', method='OPTIONS')
-        @self.app.route('/silero/restart', method='OPTIONS')
+        @self.app.route('/speakers', method='OPTIONS')
+        @self.app.route('/speak', method='OPTIONS')
+        @self.app.route('/speak/stream', method='OPTIONS')
+        @self.app.route('/restart', method='OPTIONS')
         def options_handler():
             response.status = 200
             return ''
     
     def _setup_routes(self):
-        @self.app.route('/silero/speakers', method='GET')
+        @self.app.route('/speakers', method='GET')
         def speakers():
             response.content_type = 'application/json'
             logger.info("Request list of speakers.")
-            return self.tts_service.generate_speaker_names()
+            return self.tts_service.speakers_list()
         
-        @self.app.route('/silero/speak', method='GET')
+        @self.app.route('/speak', method='GET')
         def speak():
             text = request.query.text or ""
             speaker_id = int(request.query.id or 0)
             speed = int(request.query.speed or 100)
             pitch = request.query.pitch or "medium"
             vol_boost = float(request.query.vol_boost or 0)
-            streaming = request.query.stream or ""
             
             if not text: 
                 response.status = 400
@@ -658,31 +631,13 @@ class HTTPServer:
             
             self.r_count += 1
 
-            if speaker_id == 5:  # RANDOM both
-                speaker_id = int(time.time() * 1000000) % 5
-            elif speaker_id == 6:  # RANDOM only_male
-                speaker_id = [0, 4][int(time.time() * 1000000) % 2]
-            elif speaker_id == 7:  # RANDOM only_female
-                speaker_id = [1, 2, 3][int(time.time() * 1000000) % 3]
-            elif speaker_id == 8:  # HASH both
-                t = text[:200]
-                h = 5381
-                for c in t:
-                    h = ((h << 5) + h) ^ ord(c)
-                speaker_id = (h & 0x7fffffff) % 5
-
             try:
-                if streaming.lower() in ('true', '1', 'yes', 'on'):
-                    gen = self.tts_service.synthesize_stream(text, speaker_id, speed, pitch, vol_boost, self.r_count)
-                    response.content_type = 'application/octet-stream'
-                    response.headers['Cache-Control'] = 'no-cache'
-                    response.headers['X-Accel-Buffering'] = 'no'
-                    return gen
-                else:
-                    audio_data = self.tts_service.synthesize_once(text, speaker_id, speed, pitch, vol_boost, self.r_count)
-                    response.content_type = 'audio/wav'
-                    response.headers['Content-Length'] = str(len(audio_data))
-                    return audio_data
+                audio_data = self.tts_service.synthesize_once(
+                    text, speaker_id, speed, pitch, vol_boost, self.r_count
+                )
+                response.content_type = 'audio/wav'
+                response.headers['Content-Length'] = str(len(audio_data))
+                return audio_data
                     
             except ValueError as ve:
                 logger.warning(f"Validation error: {ve}")
@@ -694,7 +649,40 @@ class HTTPServer:
                 response.content_type = 'text/plain'
                 return str(e)
         
-        @self.app.route('/silero/restart', method='POST')
+        @self.app.route('/speak/stream', method='GET')
+        def speak_stream():
+            text = request.query.text or ""
+            speaker_id = int(request.query.id or 0)
+            speed = int(request.query.speed or 100)
+            pitch = request.query.pitch or "medium"
+            vol_boost = float(request.query.vol_boost or 0)
+            
+            if not text: 
+                response.status = 400
+                return {"error": "Text is required"}
+            
+            self.r_count += 1
+
+            try:
+                gen = self.tts_service.synthesize_stream(
+                    text, speaker_id, speed, pitch, vol_boost, self.r_count
+                )
+                response.content_type = 'application/octet-stream'
+                response.headers['Cache-Control'] = 'no-cache'
+                response.headers['X-Accel-Buffering'] = 'no'
+                return gen
+                    
+            except ValueError as ve:
+                logger.warning(f"Validation error: {ve}")
+                response.status = 400
+                return {"error": str(ve)}
+            except Exception as e:
+                logger.error(f"Synthesis failed: {e}")
+                response.status = 500
+                response.content_type = 'text/plain'
+                return str(e)
+        
+        @self.app.route('/restart', method='POST')
         def restart():
             try:
                 logger.info("Reboot request.")
@@ -725,7 +713,8 @@ class Application:
         ModelLoader.setup_torch(Config.DEVICE)
         
         self.model = ModelLoader.load_model(Config.MODEL_PATH, Config.DEVICE)
-        self.cpu_monitor = CPUMonitor()
+        if HAS_CPU_MONITOR: self.cpu_monitor = CPUMonitor()
+        else: self.cpu_monitor = None
         self.tts_service = TTSService(self.model, Config.DEVICE, self.cpu_monitor)
         self.http_server = HTTPServer(self.tts_service, self)
     

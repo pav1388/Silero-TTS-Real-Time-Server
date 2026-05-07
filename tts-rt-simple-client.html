@@ -2,8 +2,9 @@
 <html lang="ru">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Silero TTS Server Simple Tester</title>
-    <style type="text/css">
+    <title>Silero TTS Simple Client</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEACABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAoGAAgJBgAGCAUABgcEAAcIBQAHCAQABQcEAAUGBAAGBwUABgkFABYXFQB4eXgAenp5AHl6eABERUMAFBUSAM3NzQDT09MApqemAKenpgC0tbQA9/b2AD0+PAAEBwQABAYEAAUHBQA4OTYA9/f3ABMVEgDLy8oAa2xrADQ1MgD7+voAPT89ACMlIwAVFxQAh4eGAPn5+QDp6ekAjI2MAE1OTQAKCwkABAYDAHFycAC8vbwA/f39ALO0swALDAoACQoIABUVEwAGBgQAGx0bAOPj4gBlZmUABQYFAAYGBQA+Pz0A8vLyAMnJyABpamkAKSonAPT09AChoqEAhoaFAJKTkQDw8PAAOTs5AElLSACio6IAo6OiAERGRAAFBgMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAgISAAAAAAAAAAAAABICAgICAhICAAAAAAAAAAICAQEBAQHBwgrAAAAAAA4CARERUZGRkcZGSsAAAAICAQ9Pj9AQEFCQxkrCAAANzc4OToICAQEOzwICAgAAAgZCDEyMxoJNDU2GRkIAAgZGRgaCRssLS4vMBkZBwcaBxkZBCUmJygpKggYKwgEAAcIByAhIggICCMkBwgEAAAHCBobHB0HCAQeHwcIBwAABAcHEBESExQVFhcYGQcAAAAHBwcLDA0NDg8ICQkAAAAAAAcHBAgHBwkEBAoAAAAAAAAAAwMEBAQFBgYAAAAAAAAAAAAAAAECAAAAAAAAAPw/AADwDwAA4AcAAMADAACAAQAAgAEAAIABAAAAAAAAAAAAAIABAACAAQAAgAEAAMADAADgBwAA8A8AAP5/AAA=">
+	<style type="text/css">
         body {
             margin: 0;
             padding: 8px;
@@ -250,14 +251,14 @@
 </head>
 <body>
 <div class="box">
-    <h1>Silero TTS Real-time Server Tester (LunaTranslator Emulator)</h1>
+    <h1>Client for "Silero TTS Real-time Server"</h1>
 
     <div class="server-box">
         <table width="99%" cellpadding="0" cellspacing="0">
             <tr>
                 <td width="45"><label>URL:</label></td>
                 <td><input type="text" id="server-url" value="http://127.0.0.1:23457" style="width: 99%; background: #FFFFFF; border: 1px solid #000000;" /></td>
-                <td width="160" style="padding-left: 6px;"><a href="#" onclick="fetch(document.getElementById('server-url').value + '/silero/restart', {method: 'POST'})">Перезагрузка сервера</a></td>
+                <td width="160" style="padding-left: 6px;"><a href="#" onclick="restartServer(); return false;">Перезагрузка сервера</a></td>
             </tr>
         </table>
     </div>
@@ -266,10 +267,14 @@
         <tr>
             <td width="50%" style="padding-right: 6px;">
                 <div class="speaker-panel">
-                    <div style="font-weight: bold; margin-bottom: 6px;">Голоса (с индивидуальными настройками)</div>
+                    <div style="font-weight: bold; margin-bottom: 6px;">
+                        <a href="#" onclick="loadSpeakersFromServer(); return false;" style="font-size: 12px; font-weight: bold;">Обновить список голосов</a>
+                        <br>
+                        Голоса (с индивидуальными настройками):
+                    </div>
                     <div id="speaker-options"></div>
                 </div>
-             </td>
+              </td>
             <td width="50%">
                 <div class="param-panel">
                     <div style="font-weight: bold; margin-bottom: 6px;">Клиентские параметры</div>
@@ -294,11 +299,8 @@
                     <div class="stream-checkbox">
                         <label>
                             <input type="checkbox" id="stream-mode" checked="checked">
-                            <b>Режим потока (stream=true)</b>
+                            <b>Режим потока (ускоряет начало воспроизведения)</b>
                         </label>
-                        <div style="font-size: 10px; margin-top: 2px; margin-left: 20px;">
-                            Текст разбивается на предложения (ускоряет начало воспроизведения)
-                        </div>
                     </div>
                     <div class="param-info">
                         Итоговые параметры для сервера:<br>
@@ -307,8 +309,8 @@
                         <span id="final-vol">-</span>
                     </div>
                 </div>
-             </td>
-         </tr>
+              </td>
+        </tr>
     </table>
 
     <div class="row" style="margin-top: 5px;">
@@ -322,6 +324,7 @@
         <label><input type="radio" name="example" value="3"> Пример 3</label>
         <label><input type="radio" name="example" value="4"> Пример 4</label>
         <label><input type="radio" name="example" value="5"> Пример 5</label>
+        <label><input type="radio" name="example" value="6"> Пример 6</label>
     </div>
 
     <div class="btn-group" style="margin-top: 5px;">
@@ -341,25 +344,8 @@
 </div>
 
 <script type="text/javascript">
-    var VOICE_PRESETS = {
-        0: { "vol_boost": 0,   "base_speed": 120, "base_pitch": "high",    "name": "aidar", "gender": "M" },
-        1: { "vol_boost": 1.5, "base_speed": 100, "base_pitch": "low",     "name": "baya", "gender": "F" },
-        2: { "vol_boost": 0,   "base_speed": 100, "base_pitch": "medium",  "name": "kseniya", "gender": "F" },
-        3: { "vol_boost": 0.5, "base_speed": 100, "base_pitch": "medium",  "name": "xenia", "gender": "F" },
-        4: { "vol_boost": -1,  "base_speed": 87,  "base_pitch": "high",    "name": "eugene", "gender": "M" },
-        5: { "vol_boost": 0,   "base_speed": 100, "base_pitch": "medium",  "name": "RANDOM", "gender": "both" },
-        6: { "vol_boost": 0,   "base_speed": 100, "base_pitch": "medium",  "name": "HASH", "gender": "both" }
-    };
-    
-    var SPEAKERS = [
-        { id: 0, name: "aidar", display: "0 aidar M ru" },
-        { id: 1, name: "baya", display: "1 baya F ru" },
-        { id: 2, name: "kseniya", display: "2 kseniya F ru" },
-        { id: 3, name: "xenia", display: "3 xenia F ru" },
-        { id: 4, name: "eugene", display: "4 eugene M ru" },
-        { id: 5, name: "RANDOM", display: "5 RANDOM ru" },
-        { id: 8, name: "HASH", display: "8 HASH ru" }
-    ];
+    var VOICE_PRESETS = {};
+    var SPEAKERS = [];
     
     var speedValue = 0.0;
     var pitchValue = 0.0;
@@ -390,13 +376,91 @@
         "2": "Что? Не может быть! Да это же просто великолепно... Ой, подожди, я ошибся.",
         "3": "Для выхода на низкую околоземную орбиту требуется скорость примерно 7,9 километра в секунду. Системы жизнеобеспечения корабля «Восток-1» работали в штатном режиме, несмотря на перепады температур от минус ста до плюс ста градусов.",
         "4": "Он установил Windows 11, запустил файл test_v5.mp3 и переключился на Wi-Fi 6. Hello World! 123.456 тест-драйв... что будет? (может быть) [или нет] 1/2 круга & 5% скидка.",
-        "5": "Охотник на скатов «Флирт с ангельским огнем», как и большинство кораблей такого типа, в море казался злым и лихим. Наполовину военное судно, наполовину гоночный ялик-переросток, сочетавший центр тяжести в остром киле и неправдоподобные мощности грав-силы в двойных капсулах на аутригерах, – в первую очередь он был построен для беспечной скорости и пиратства. Слоновые скаты и их родственники поменьше – быстры в воде, но важнее то, что их мясо портится, если оставить его надолго без обработки. Можно заморозить туши и торговать спокойно, но если успеешь домчать до больших рынков в таких финансовых центрах, как Миллспорт, то сорвешь настоящий куш. А для этого нужно быстроходное судно. Судостроители по всему Харлану понимали и исходили из этого. Среди тех же судостроителей ходило негласное понимание, что лучшие слоновые скаты обитают и нерестятся в угодьях, отведенных эксклюзивно для Первых Семей. Браконьерство – серьезное преступление, и если хочешь, чтобы оно сошло тебе с рук, быстроходному судну также нужен низкий и малозаметный профиль – как визуально, так и на радаре. Если надо сбежать от правоохранителей Харлана, найдется много способов хуже, чем на борту охотника. На второй день в море, обнадеженный знанием, что мы уже так далеко от Миллспортского архипелага и нас не догонит ни один воздушный аппарат, я вышел на палубу и встал на левом мостке аутригера, глядя, как подо мной проносится пенящийся океан. Брызги на ветру и ощущение, что события летят на меня слишком быстро, чтобы их осознать. Прошлое и груз смертей оставались в кильватере, унося с собой выбор и решения, которые уже поздно менять."
+        "5": "У меня 2 яблока, 3 груши и 5% апельсинов. Полтора землекопа выкопали 2,5 метра канавы за 3,5 часа. Это стоит 1500 рублей или 1.5 тысячи? 99,9% что это работает! Сегодня 15 марта 2024 года, время 14 часов 30 минут. Встреча назначена на 25.12.2024 в 18:45. Я родился 1 января 2000 года. Мне 1,5 года или полтора года?",
+        "6": "Охотник на скатов «Флирт с ангельским огнем», как и большинство кораблей такого типа, в море казался злым и лихим. Наполовину военное судно, наполовину гоночный ялик-переросток, сочетавший центр тяжести в остром киле и неправдоподобные мощности грав-силы в двойных капсулах на аутригерах, – в первую очередь он был построен для беспечной скорости и пиратства. Слоновые скаты и их родственники поменьше – быстры в воде, но важнее то, что их мясо портится, если оставить его надолго без обработки. Можно заморозить туши и торговать спокойно, но если успеешь домчать до больших рынков в таких финансовых центрах, как Миллспорт, то сорвешь настоящий куш. А для этого нужно быстроходное судно. Судостроители по всему Харлану понимали и исходили из этого. Среди тех же судостроителей ходило негласное понимание, что лучшие слоновые скаты обитают и нерестятся в угодьях, отведенных эксклюзивно для Первых Семей. Браконьерство – серьезное преступление, и если хочешь, чтобы оно сошло тебе с рук, быстроходному судну также нужен низкий и малозаметный профиль – как визуально, так и на радаре. Если надо сбежать от правоохранителей Харлана, найдется много способов хуже, чем на борту охотника. На второй день в море, обнадеженный знанием, что мы уже так далеко от Миллспортского архипелага и нас не догонит ни один воздушный аппарат, я вышел на палубу и встал на левом мостке аутригера, глядя, как подо мной проносится пенящийся океан. Брызги на ветру и ощущение, что события летят на меня слишком быстро, чтобы их осознать. Прошлое и груз смертей оставались в кильватере, унося с собой выбор и решения, которые уже поздно менять."
     };
     
     function showStatus(msg, isError) {
         statusMsg.innerHTML = msg;
         statusMsg.style.display = 'block';
         statusMsg.style.background = isError ? '#FFCCCC' : '#CCFFCC';
+    }
+    
+    // Загрузка списка голосов с сервера
+    async function loadSpeakersFromServer() {
+        var server = serverUrlInput.value;
+        if (!server) return false;
+        
+        try {
+            var response = await fetch(server + '/speakers');
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var data = await response.json();
+            
+            if (data && data.silero && Array.isArray(data.silero)) {
+                // Обновляем список голосов
+                SPEAKERS = data.silero.map(function(spk, idx) {
+                    return {
+                        id: spk.id,
+                        name: spk.name,
+                        display: spk.id + " " + spk.name + " " + (spk.gender || 'n/d') + " " + (spk.lang || 'n/d')
+                    };
+                });
+                
+                // Создаем пресеты для каждого голоса
+                VOICE_PRESETS = {};
+                for (var i = 0; i < SPEAKERS.length; i++) {
+                    var spk = SPEAKERS[i];
+                    // Базовые настройки для всех голосов
+                    var preset = {
+                        "vol_boost": 0,
+                        "base_speed": 100,
+                        "base_pitch": "medium",
+                        "name": spk.name,
+                        "gender": spk.gender
+                    };
+                    
+                    // Индивидуальные настройки для известных голосов
+                    if (spk.name === "aidar") {
+                        preset.vol_boost = 0;
+                        preset.base_speed = 119;
+                        preset.base_pitch = "high";
+                    } else if (spk.name === "baya") {
+                        preset.vol_boost = 1.5;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "low";
+                    } else if (spk.name === "kseniya") {
+                        preset.vol_boost = 0;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "medium";
+                    } else if (spk.name === "eugene") {
+                        preset.vol_boost = -1;
+                        preset.base_speed = 89;
+                        preset.base_pitch = "high";
+                    } else if (spk.name === "xenia") {
+                        preset.vol_boost = 0.5;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "medium";
+                    } else if (spk.name === "RANDOM") {
+                        preset.vol_boost = 0;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "medium";
+                    } else if (spk.name === "HASH") {
+                        preset.vol_boost = 0;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "medium";
+                    }
+                    
+                    VOICE_PRESETS[spk.id] = preset;
+                }
+                
+                renderSpeakers();
+                return true;
+            }
+        } catch (error) {
+            console.warn('Failed to load speakers:', error);
+            return false;
+        }
+        return false;
     }
     
     function renderSpeakers() {
@@ -407,16 +471,20 @@
             var spk = SPEAKERS[i];
             var preset = VOICE_PRESETS[spk.id];
             var presetText = '';
-            if (preset && spk.id < 5) {
+            if (preset && spk.name !== 'RANDOM' && spk.name !== 'HASH' && spk.name !== 'RANDOM_M' && spk.name !== 'RANDOM_F') {
                 presetText = '<span class="speaker-preset-info">vol=' + preset.vol_boost + 
                             'dB | spd=' + preset.base_speed + 
                             '% | ptch=' + preset.base_pitch + '</span>';
-            } else if (spk.id == 5) {
-                presetText = '<span class="speaker-preset-info">каждый запрос — случайный голос</span>';
-            } else if (spk.id == 8) {
+            } else if (spk.name === 'RANDOM') {
+                presetText = '<span class="speaker-preset-info">случайный голос</span>';
+            }else if (spk.name === 'RANDOM_M') {
+                presetText = '<span class="speaker-preset-info">случайный мужской голос</span>';
+            }else if (spk.name === 'RANDOM_F') {
+                presetText = '<span class="speaker-preset-info">случайный женский голос</span>';
+            } else if (spk.name === 'HASH') {
                 presetText = '<span class="speaker-preset-info">выбор голоса зависит от текста</span>';
             }
-            var checkedAttr = (i === 0) ? ' checked="checked"' : '';
+            var checkedAttr = (i === 0 && currentSpeakerId === spk.id) ? ' checked="checked"' : '';
             html += '<div class="speaker-item" onclick="document.getElementById(\'spk_' + spk.id + '\').click();">' +
                     '<input type="radio" name="speaker" id="spk_' + spk.id + '" value="' + spk.id + '"' + checkedAttr + ' />' +
                     '<label for="spk_' + spk.id + '"> <b>' + spk.display + '</b></label>' +
@@ -434,8 +502,40 @@
             };
         }
         
-        currentSpeakerId = 0;
+        if (SPEAKERS.length > 0 && currentSpeakerId === 0) {
+            currentSpeakerId = SPEAKERS[0].id;
+        }
         updateFinalParams();
+    }
+    
+    async function restartServer() {
+        var server = serverUrlInput.value;
+        if (!server) {
+            alert('Введите URL сервера');
+            return;
+        }
+        
+        showStatus('Отправка запроса на перезагрузку сервера...', false);
+        
+        try {
+            var response = await fetch(server + '/restart', {method: 'POST'});
+            if (response.ok) {
+                showStatus('Сервер перезагружается... Подождите ~10 секунд или обновите список голосов вручную', false);
+                // Ждем перезагрузки и обновляем список голосов
+                setTimeout(function() {
+                    loadSpeakersFromServer();
+                }, 10000);
+            } else {
+                var errorText = await response.text();
+                showStatus('Ошибка перезагрузки: ' + errorText, true);
+            }
+        } catch (error) {
+            showStatus('Ошибка: ' + error.message + ' (сервер может быть недоступен во время перезагрузки)', true);
+            // Все равно пробуем обновить список через несколько секунд
+            setTimeout(function() {
+                loadSpeakersFromServer();
+            }, 10000);
+        }
     }
     
     function getSelectedSpeakerId() {
@@ -545,17 +645,17 @@
         var pitchParam = getFinalPitchLevel();
         var volParam = getFinalVolBoost();
         
-        var url = server + '/silero/speak?';
+        var url;
+		if (isStreamMode()) {
+            url = server + '/speak/stream?';
+        } else {
+			url = server + '/speak?';
+		}
         url += 'text=' + encodeURIComponent(text);
         url += '&id=' + encodeURIComponent(speakerId);
         url += '&speed=' + encodeURIComponent(speedParam);
         url += '&pitch=' + encodeURIComponent(pitchParam);
         url += '&vol_boost=' + encodeURIComponent(volParam);
-        
-        if (isStreamMode()) {
-            url += '&stream=true';
-        }
-        
         return url;
     }
     
@@ -726,9 +826,9 @@
         bindExampleRadios();
     }
     
-    function init() {
-        renderSpeakers();
+    async function init() {
         loadServerUrlFromCookie();
+        await loadSpeakersFromServer();
         speedValue = 0.0;
         pitchValue = 0.0;
         updateSpeedUI();
