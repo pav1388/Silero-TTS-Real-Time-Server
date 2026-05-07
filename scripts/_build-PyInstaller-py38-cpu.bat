@@ -73,7 +73,7 @@ xcopy "models\v5_5_ru.pt" "dist\%FOLDERNAME%\models\" /I /Y >nul
 echo        [OK] Models copied
 xcopy "README.md" "dist\%FOLDERNAME%\" /Y >nul
 echo        [OK] README.md copied
-xcopy "tts-rt-server-simple-tester.html" "dist\%FOLDERNAME%\" /Y >nul
+xcopy "tts-rt-simple-client.html" "dist\%FOLDERNAME%\" /Y >nul
 echo        [OK] Tester copied
 xcopy "LunaTranslator\*" "dist\%FOLDERNAME%\LunaTranslator\" /E /I /Y >nul
 echo        [OK] LunaTranslator copied
