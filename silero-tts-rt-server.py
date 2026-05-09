@@ -1,18 +1,21 @@
 # silero-tts-rt-server.py
 # pav13
 
-import ctypes, logging, os, platform, re, signal, struct, sys, threading, time
+import ctypes, logging, os, platform, signal, struct, sys, threading, time
 import numpy as np
-import psutil
 import torch
 from bottle import Bottle, hook, request, response, run
 from functools import lru_cache
 from num2words import num2words
 from urllib.parse import unquote
 
-MAIN_VERSION = "0.7.0"
+import warnings
+warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
+
+MAIN_VERSION = "0.8.0"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
+NO_CPU_MONITOR = ('--no-cpu-monitor' in sys.argv) or (os.environ.get('NO_CPU_MONITOR', '0').lower() in ('1', 'true'))
 
 logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
@@ -24,13 +27,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-try:
-    from cpu_monitor import CPUMonitor
-    HAS_CPU_MONITOR = True
-except ImportError:
+if not NO_CPU_MONITOR:
+    try:
+        from cpu_monitor import CPUMonitor
+        HAS_CPU_MONITOR = True
+    except ImportError:
+        HAS_CPU_MONITOR = False
+        CPUMonitor = None
+        logger.warning("cpu_monitor.py not found. Speech quality always 'MAX'.")
+else:
     HAS_CPU_MONITOR = False
     CPUMonitor = None
-    logger.warning("cpu_monitor.py not found. Speech quality always 'MAX'.")
+    logger.debug("CPU Monitor disabled. Speech quality always 'MAX'.")
 
 
 class Config:
@@ -46,16 +54,11 @@ class Config:
     MAX_TEXT_LENGTH = 900
     PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
     MAX_QUALITY_CONFIG = {"sample_rate": 48000, "put_accent": True,  "put_yo": True,
-            "put_stress_homo": True,  "put_yo_homo": True,  "name": "CPU Monitor disabled"}
+            "put_stress_homo": True,  "put_yo_homo": True,  "name": "MAX"}
     SPEAKERS = []
     REAL_SPEAKERS_COUNT = 0
-    SPEAKERS_INFO = {
-        "aidar": {"gender": "male", "lang": "ru"},
-        "baya": {"gender": "female", "lang": "ru"},
-        "kseniya": {"gender": "female", "lang": "ru"},
-        "eugene": {"gender": "male", "lang": "ru"},
-        "xenia": {"gender": "female", "lang": "ru"},
-    }
+    SPEAKERS_INFO = {"aidar": {"gender": "male"}, "baya": {"gender": "female"},
+        "kseniya": {"gender": "female"}, "eugene": {"gender": "male"}, "xenia": {"gender": "female"}}
     
 
 class ModelLoader:
@@ -66,14 +69,11 @@ class ModelLoader:
         torch.backends.cudnn.deterministic = False
         
         if device.type == 'cpu':
-            try:
-                cores = psutil.cpu_count(logical=False) or psutil.cpu_count(logical=True) or 1
-            except:
-                cores = os.cpu_count() or 1
+            cores = os.cpu_count() or 1
             n_threads = 2 if cores > 1 else 1
             torch.set_num_threads(n_threads)
             torch.set_num_interop_threads(1)
-            logger.info(f"Device: CPU | Threads: {n_threads} | Cores: {cores}")
+            logger.info(f"Device: CPU | Threads: {n_threads} | Logical cores: {cores}")
         
         elif device.type == 'cuda':
             logger.info(f"Device: {torch.cuda.get_device_name(0)} | VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
@@ -81,18 +81,43 @@ class ModelLoader:
             torch.cuda.empty_cache()
             
             if DEBUG:
-                logger.info(f"CUDA: {torch.version.cuda} | cuDNN: {torch.backends.cudnn.version()}")
+                logger.debug(f"CUDA: {torch.version.cuda} | cuDNN: {torch.backends.cudnn.version()}")
                 props = torch.cuda.get_device_properties(0)
-                logger.info(f"Capability: {props.major}.{props.minor} | SMs: {props.multi_processor_count}")
+                logger.debug(f"Capability: {props.major}.{props.minor} | SMs: {props.multi_processor_count}")
         
         if DEBUG:
             try:
-                mem = psutil.virtual_memory()
-                logger.info(f"RAM: {mem.total/1e9:.1f} GB | Free: {mem.available/1e9:.1f} GB")
-                logger.info(f"PyTorch: {torch.__version__} | Python: {sys.version.split()[0]}")
-                logger.info(f"OS: {platform.system()} {platform.release()} | Arch: {platform.machine()}")
-            except:
-                pass
+                system = platform.system()
+                if system == "Windows":
+                    class MEMORYSTATUSEX(ctypes.Structure):
+                        _fields_ = [
+                            ("dwLength", ctypes.c_ulong),
+                            ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong),
+                            ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong),
+                            ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong),
+                            ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                        ]
+                    memoryStatus = MEMORYSTATUSEX()
+                    memoryStatus.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+                    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(memoryStatus))
+                    total_mem = memoryStatus.ullTotalPhys
+                    avail_mem = memoryStatus.ullAvailPhys
+                else:
+                    with open('/proc/meminfo', 'r') as f:
+                        meminfo = f.readlines()
+                    total_mem = int(meminfo[0].split()[1]) * 1024
+                    avail_mem = int(meminfo[2].split()[1]) * 1024
+                
+                logger.debug(f"RAM: {total_mem/1e9:.1f} GB | Free: {avail_mem/1e9:.1f} GB")
+                logger.debug(f"PyTorch: {torch.__version__} | Python: {sys.version.split()[0]}")
+                logger.debug(f"OS: {platform.system()} {platform.release()} | Arch: {platform.machine()}")
+            except Exception as e:
+                if DEBUG:
+                    logger.warning(f"Could not get system memory info: {e}")
     
     @staticmethod
     def download_model(model_path: str):
@@ -119,26 +144,26 @@ class ModelLoader:
             model.to(device)
             logger.info("OK")
             model_speakers = model.speakers
+            
             Config.SPEAKERS = [
                 {"id": idx, "name": name, 
                  "gender": Config.SPEAKERS_INFO.get(name, {}).get("gender", "n/d"),
-                 "lang": Config.SPEAKERS_INFO.get(name, {}).get("lang", "n/d")}
+                 "lang": "ru"}
                 for idx, name in enumerate(model_speakers)
             ]
-            
             Config.REAL_SPEAKERS_COUNT = len(model_speakers)
             
             special_speakers = [
-                {"id": len(model_speakers),     "name": "RANDOM",    "gender": "both",   "lang": "ru"},
-                {"id": len(model_speakers) + 1, "name": "RANDOM_M",  "gender": "male",   "lang": "ru"},
-                {"id": len(model_speakers) + 2, "name": "RANDOM_F",  "gender": "female", "lang": "ru"},
-                {"id": len(model_speakers) + 3, "name": "HASH",      "gender": "both",   "lang": "ru"},
+                {"id": Config.REAL_SPEAKERS_COUNT,     "name": "RANDOM",    "gender": "both",   "lang": "ru"},
+                {"id": Config.REAL_SPEAKERS_COUNT + 1, "name": "RANDOM_M",  "gender": "male",   "lang": "ru"},
+                {"id": Config.REAL_SPEAKERS_COUNT + 2, "name": "RANDOM_F",  "gender": "female", "lang": "ru"},
+                {"id": Config.REAL_SPEAKERS_COUNT + 3, "name": "HASH",      "gender": "both",   "lang": "ru"},
             ]
             Config.SPEAKERS.extend(special_speakers)
             
             if DEBUG:
-                logger.debug(f"Loaded {len(model_speakers)} speakers from model:")
-                for spk in Config.SPEAKERS[:len(model_speakers)]:
+                logger.debug(f"Loaded {Config.REAL_SPEAKERS_COUNT} speakers from model:")
+                for spk in Config.SPEAKERS[:Config.REAL_SPEAKERS_COUNT]:
                     logger.debug(f"  - {spk['name']}: {spk['lang']}, {spk['gender']};")
             
             return model
@@ -164,13 +189,12 @@ class ModelLoader:
 
 
 class TextProcessor:
-    """обработка текста (SSML, числа, транслитерация)"""
+    """обработка текста (SSML, числа, транслитерация, разбиение на предложения)"""
     pause0, pause1, pause2, pause3, pause4, pause5 = 0, 130, 180, 215, 320, 480
-    BREAK_TIME_MAP = {'.': pause4, ',': pause2, '!': pause4, '?': pause4, 
-                      '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
-                      ':': pause1, ';': pause3, '—': pause3, '…': pause5}
-    EMOTIONS = {'!': (7, 0), '?': (-7, 0)} # 'знак': (speed в %, pitch от -2 до 2)
-    ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–")
+    PUNCT_REPL = {'.': pause4, ',': pause2, '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
+                    ':': pause1, ';': pause3, '—': pause3, '…': pause5}
+    PUNCT_NO_REPL = {'!': pause4, '?': pause4}
+    ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–*")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz&")
     TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
         'tch':'ч','sch':'ск','scr':'скр','thr':'тр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд',
@@ -191,8 +215,66 @@ class TextProcessor:
         self.speed_percent = max(40, min(300, speed_percent))
         self.pitch_level = pitch if pitch in Config.PITCH_ORDER else "medium"
 
-    def process_text(self, text: str) -> str:
-        if not text: return "", 0
+    def split_sentences(self, text: str) -> list:
+        sentences = []
+        current_sentence = []
+        end_of_sentence_chars = {'.', '!', '?', '…'}
+        len_text = len(text)
+        
+        for i, ch in enumerate(text):
+            current_sentence.append(ch)
+            if ch in end_of_sentence_chars:
+                if i + 1 == len_text or text[i + 1] == ' ':
+                    sentences.append(''.join(current_sentence).strip())
+                    current_sentence = []
+        
+        if current_sentence:
+            sentences.append(''.join(current_sentence).strip())
+        
+        sentences = [s for s in sentences if s]
+        result = []
+        for sentence in sentences:
+            if len(sentence) <= 200:
+                result.append(sentence)
+                continue
+
+            parts = []
+            current_part = []
+            minor_delim_chars = {',', ';', ':', '—'}
+            
+            for ch in sentence:
+                current_part.append(ch)
+                if ch in minor_delim_chars:
+                    parts.append(''.join(current_part).strip())
+                    current_part = []
+            if current_part:
+                parts.append(''.join(current_part).strip())
+            parts = [p for p in parts if p]
+            current = []
+            cur_len = 0
+            cur_join = " ".join
+
+            for part in parts:
+                if cur_len and cur_len < 60:
+                    current.append(part)
+                    cur_len += len(part) + 1
+                elif current:
+                    result.append(cur_join(current))
+                    current = [part]
+                    cur_len = len(part)
+                else:
+                    current = [part]
+                    cur_len = len(part)
+
+            if current:
+                if result and cur_len < 60:
+                    result[-1] += " " + cur_join(current)
+                else:
+                    result.append(cur_join(current))
+        
+        return result
+
+    def process_sentence(self, text: str, vol_boost: float) -> tuple:
         len_text = len(text)
         if len_text > Config.MAX_TEXT_LENGTH:
             len_text = Config.MAX_TEXT_LENGTH
@@ -201,13 +283,17 @@ class TextProcessor:
         
         text = unquote(text).lower()
         has_latin = any(ch in self.LATIN for ch in text)
-        processed_body = self._proc(text, len_text, has_latin)
-        return f'<speak><prosody rate="{self.speed_percent}%" pitch="{self.pitch_level}">{processed_body}</prosody></speak>', len_text
+        vol_boost_mod = vol_boost + 3.5 if text.rstrip().endswith('!') else vol_boost
+        processed_text = self._proc(text, len_text, has_latin)
+        ssml = f'<speak><prosody rate="{self.speed_percent}%" pitch="{self.pitch_level}">{processed_text}</prosody></speak>'
+        
+        return ssml, vol_boost_mod
 
     def _proc(self, text: str, len_text: int, has_latin: bool) -> str:
-        res, buf, i, n = [], [], 0, len_text
-        BREAK_TIME_MAP, ALLOWED, LATIN, EMOTIONS = self.BREAK_TIME_MAP, self.ALLOWED, self.LATIN, self.EMOTIONS
-        while i < n:
+        res, buf, i = [], [], 0
+        PUNCT_REPL, PUNCT_NO_REPL = self.PUNCT_REPL, self.PUNCT_NO_REPL
+        ALLOWED, LATIN = self.ALLOWED, self.LATIN
+        while i < len_text:
             ch = text[i]
             if ch.isdigit():
                 i, p = self._num(text, i)
@@ -217,26 +303,29 @@ class TextProcessor:
                 ni, tr = self._trans(text, i)
                 if tr and tr != ch: buf.append(tr)
                 i = ni
-                # word_start = i
-                # while i < n and text[i] in LATIN: i += 1
-                # lat = text[word_start:i]
-                # cyr = translit(lat, 'ru')
-                # if cyr: buf.append(cyr)
                 continue
-            if ch in BREAK_TIME_MAP:
+            if ch in PUNCT_REPL:
                 skip = 1
-                if ch == '.' and i + 2 < n and text[i+1] == '.':
-                    if text[i+2] == '.':
-                        ch = '…'
-                        skip = 3
+                if ch == '.' and i + 2 < len_text and text[i+1] == '.' and text[i+2] == '.':
+                    ch = '…'
+                    skip = 3
                 if buf:
                     s = ''.join(buf).strip()
-                    if ch in EMOTIONS: text_to_wrap = s + ' ' + ch
-                    else: text_to_wrap = s
-                    res.append(self._wrap(text_to_wrap, ch))
-                res.append(f'<break time="{BREAK_TIME_MAP[ch]}ms"/>')
+                    if s:
+                        res.append(s)
+                res.append(f'<break time="{PUNCT_REPL[ch]}ms"/>')
                 buf.clear()
                 i += skip
+                continue
+            if ch in PUNCT_NO_REPL:
+                if buf:
+                    s = ''.join(buf).strip()
+                    if s:
+                        res.append(self._wrap(s))
+                    res.append(ch) 
+                res.append(f'<break time="{PUNCT_NO_REPL[ch]}ms"/>')
+                buf.clear()
+                i += 1
                 continue
             if ch.isspace():
                 if not buf or buf[-1] != ' ': buf.append(' ')
@@ -248,68 +337,13 @@ class TextProcessor:
                 continue
             if not (buf and buf[-1] == ' '): buf.append(' ')
             i += 1
+        
         if buf:
             s = ''.join(buf).strip()
-            if s: res.append(self._wrap(s, None))
+            if s: 
+                res.append(s)
         return ''.join(res).strip()
     
-    def _num(self, text: str, start: int) -> tuple:
-        i, n = start, len(text)
-        while i < n and text[i].isdigit(): i += 1
-        
-        if i == start:
-            return start + 1, text[start]
-        
-        num = int(text[start:i])
-        num_word = num_to_words(num)
-        
-        if i < n and text[i] == '%':
-            if num % 10 == 1 and num % 100 != 11:
-                percent_form = 'процент'
-            elif 2 <= num % 10 <= 4 and (num % 100 < 10 or num % 100 >= 20):
-                percent_form = 'процента'
-            else:
-                percent_form = 'процентов'
-            
-            return i + 1, f"{num_word} {percent_form}"
-        
-        if i < n and text[i] in '.,' and i + 1 < n and text[i+1].isdigit():
-            k = i + 1
-            while k < n and text[k].isdigit(): k += 1
-            fractional = text[i+1:k]
-            fractional_word = num_to_words(int(fractional))
-            
-            if num % 10 == 1 and num % 100 != 11:
-                whole_word = 'целая'
-            else:
-                whole_word = 'целых'
-            
-            fractional_len = len(fractional)
-            if fractional_len == 1:
-                fractional_part = 'десятых'
-            elif fractional_len == 2:
-                fractional_part = 'сотых'
-            elif fractional_len == 3:
-                fractional_part = 'тысячных'
-            elif fractional_len == 4:
-                fractional_part = 'десятитысячных'
-            elif fractional_len == 5:
-                fractional_part = 'стотысячных'
-            else:
-                fractional_part = ''
-            
-            return k, f"{num_word} {whole_word} {fractional_word} {fractional_part}"
-        
-        if i < n and text[i] == '/' and i + 1 < n and text[i+1].isdigit():
-            k = i + 1
-            while k < n and text[k].isdigit(): k += 1
-            denominator = int(text[i+1:k])
-            denominator_word = num_to_words(denominator)
-            
-            return k, f"{num_word} дробь {denominator_word}"
-        
-        return i, num_word
-
     def _trans(self, text: str, pos: int) -> tuple:
         node, best, best_pos = self.transl_trie, None, pos
         j = pos
@@ -319,45 +353,88 @@ class TextProcessor:
             if '_' in node: best, best_pos = node['_'], j
         return (best_pos, best) if best else (pos + 1, text[pos] if text[pos] in self.ALLOWED else " ")
     
-    def _wrap(self, text: str, end_punct: str) -> str:
-        if not text: return ""
-        if end_punct not in self.EMOTIONS: return text
+    def _wrap(self, text: str) -> str:
+        last_space = text.rfind(' ')
+        if last_space == -1:
+            return f"*{text}*"
         
-        sm, pd = self.EMOTIONS[end_punct]
-        emo_r = f"{int(self.speed_percent + sm)}"
-        pitch_order = Config.PITCH_ORDER
-        try:
-            idx = max(0, min(len(pitch_order) - 1, pitch_order.index(self.pitch_level) + pd))
-            emo_p = pitch_order[idx]
-        except ValueError:
-            emo_p = self.pitch_level
-        
-        def attrs(rate, pitch): return f'rate="{rate}%" pitch="{pitch}"'
-        
-        if ' ' not in text:
-            return f'<prosody {attrs(emo_r, emo_p)}>{text}</prosody>'
-        
-        words = text.split()
-        
-        if len(words) < 4:
-            return f'<prosody {attrs(emo_r, emo_p)}>{text}</prosody>'
-        
-        tail_count = max(1, int(len(words) * 0.2))
-        
-        if tail_count < len(words) and words[-1] in ['!', '?'] and tail_count == 1:
-             tail_count = 2
+        return f"{text[:last_space]} *{text[last_space+1:]}*"
 
-        head_words = words[:-tail_count]
-        tail_words = words[-tail_count:]
-        head_text = " ".join(head_words)
-        tail_text = " ".join(tail_words)
-        return f'{head_text} <prosody {attrs(emo_r, emo_p)}>{tail_text}</prosody>'
+    def _num(self, text: str, start: int) -> tuple:
+        i, n = start, len(text)
+        while i < n and text[i].isdigit(): i += 1
+        if i == start: return start + 1, text[start]
+
+        num_str = text[start:i]
+        num_val = int(num_str)
+
+        # Время
+        if i < n and text[i] == ':' and i + 2 < n and text[i+1:i+3].isdigit():
+            mm = int(text[i+1:i+3])
+            end = i + 3
+            res = f"{num_to_words(num_val)} часов {num_to_words(mm)} минут"
+            if end < n and text[end] == ':' and end + 2 < n and text[end+1:end+3].isdigit():
+                res += f" {num_to_words(int(text[end+1:end+3]))} секунд"
+                end += 3
+            return end, res
+
+        # Дата
+        if i < n and text[i] in '.-/' and i + 1 < n and text[i+1].isdigit():
+            j = i + 1
+            while j < n and text[j].isdigit(): j += 1
+            mm = int(text[i+1:j])
+
+            if j < n and text[j] in '.-/' and j + 1 < n and text[j+1].isdigit():
+                l = j + 1
+                while l < n and text[l].isdigit(): l += 1
+                part3 = int(text[j+1:l])
+                months = ["", "января", "февраля", "марта", "апреля", "мая", "июня",
+                          "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+                month_w = months[mm] if 1 <= mm <= 12 else str(mm)
+
+                if (i - start) == 4:
+                    year_w = num_to_words(num_val, to='ordinal', case='g')
+                    day_w = num_to_words(part3, to='ordinal', gender='n')
+                else:
+                    day_w = num_to_words(num_val, to='ordinal', gender='n')
+                    year_w = num_to_words(part3, to='ordinal', case='g')
+
+                return l, f"{day_w} {month_w} {year_w} года"
+
+        # Десятичные дроби
+        if i < n and text[i] in '.,' and i + 1 < n and text[i+1].isdigit():
+            k = i + 1
+            while k < n and text[k].isdigit(): k += 1
+            if num_val == 1 and text[i+1:k] == '5':
+                return k, "полтора"
+            return k, num_to_words(text[start:k].replace(',', '.'))
+
+        # Проценты
+        if i < n and text[i] == '%':
+            return i + 1, f"{num_to_words(num_val)} {self._plur(num_val, ('процент', 'процента', 'процентов'))}"
+
+        # Обычные дроби
+        if i < n and text[i] == '/' and i + 1 < n and text[i+1].isdigit():
+            k = i + 1
+            while k < n and text[k].isdigit(): k += 1
+            return k, f"{num_to_words(num_val)} дробь {num_to_words(int(text[i+1:k]))}"
+
+        # Обычное число
+        return i, num_to_words(num_val)
+
+    @staticmethod
+    def _plur(n: int, forms: tuple) -> str:
+        if n % 100 in (11, 12, 13, 14): return forms[2]
+        if n % 10 == 1: return forms[0]
+        if n % 10 in (2, 3, 4): return forms[1]
+        return forms[2]
 
 
-@lru_cache(maxsize=2048)
-def num_to_words(num: int) -> str:
-    """преобразование чисел в слова"""
-    return num2words(num, lang='ru')
+@lru_cache(maxsize=4096)
+def num_to_words(num, to='cardinal', case='n', gender='m', plural=False, animate=False) -> str:
+    """num: int/str | to: cardinal/ordinal | case: n/g/d/a/i/p (им/род/дат/вин/твор/предл)
+       gender: m/f/n | plural: bool | animate: bool (одуш., только для вин. п.)"""
+    return num2words(num, lang='ru', to=to, case=case, gender=gender, plural=plural, animate=animate)
 
 
 class AudioSynthesizer:
@@ -380,7 +457,10 @@ class AudioSynthesizer:
         return hdr + raw
 
     def synthesize(self, ssml: str, speaker_name: str, sample_rate: int, 
-                put_accent: bool, put_yo: bool, put_stress_homo: bool, put_yo_homo: bool, vol_boost: float) -> bytes:
+                    put_accent: bool, put_yo: bool, put_stress_homo: bool, put_yo_homo: bool,
+                        vol_boost: float) -> tuple:
+        t_start = time.time() if DEBUG else None
+        audio = None
         try:
             with torch.no_grad():
                 if DEBUG and self.device.type == 'cuda':
@@ -389,7 +469,7 @@ class AudioSynthesizer:
                 audio = self.model.apply_tts(
                     ssml_text=ssml, speaker=speaker_name, sample_rate=sample_rate, 
                     put_accent=put_accent, put_yo=put_yo,
-                    put_stress_homo=put_stress_homo, put_yo_homo=put_yo_homo)
+                    put_stress_homo=put_stress_homo, put_yo_homo=put_yo_homo, intensity=3)
             
                 if self.device.type == 'cuda':
                     self.inference_count += 1
@@ -398,6 +478,7 @@ class AudioSynthesizer:
                         self.inference_count = 0
 
         except Exception as e:
+            if audio is not None: del audio
             raise RuntimeError(f"Model inference failed: {str(e)}")
         
         if audio.dim() == 1: 
@@ -406,8 +487,15 @@ class AudioSynthesizer:
             audio = torch.clamp(audio * (10 ** (vol_boost / 20.0)), -1.0, 1.0)
 
         wav_bytes = self._to_wav(audio, sample_rate)
+        
+        duration = 0
+        inference_time = 0
+        if DEBUG:
+            num_samples = audio.shape[1] if audio.dim() > 1 else audio.shape[0]
+            duration = num_samples / sample_rate
+            inference_time = time.time() - t_start
         del audio
-        return wav_bytes
+        return wav_bytes, duration, inference_time
 
 
 class TTSService:
@@ -449,48 +537,36 @@ class TTSService:
     def speakers_list(self):
         return {"silero": Config.SPEAKERS.copy()}
     
+    def _get_quality_config(self):
+        if self.cpu_monitor:
+            self.cpu_monitor.record_activity()
+            if DEBUG: logger.debug(self.cpu_monitor.get_status())
+            return self.cpu_monitor.get_current_quality_config()
+        return Config.MAX_QUALITY_CONFIG
+    
+    def _synthesize_sentence(self, sentence: str, speaker_name: str, 
+                             speed: int, pitch: str, vol_boost: float, quality_config: dict) -> tuple:
+        self.text_processor.set_ssml_params(speed, pitch)
+        ssml, vol_boost_mod = self.text_processor.process_sentence(sentence, vol_boost)
+        
+        sr = min(Config.MAX_SAMPLE_RATE, quality_config["sample_rate"])
+        
+        if DEBUG:
+            logger.debug(f"  N:{speaker_name} S:{speed}% P:{pitch} V_B:{vol_boost_mod}dB S_R:{sr} Q:{quality_config['name']}")
+            logger.debug(f"  SSML_L:{len(ssml)} SSML:{ssml}")
+        
+        return self.audio_synthesizer.synthesize(
+            ssml, speaker_name, sr,
+            quality_config['put_accent'], quality_config['put_yo'],
+            quality_config['put_stress_homo'], quality_config['put_yo_homo'],
+            vol_boost_mod
+        )
+    
     def synthesize_stream(self, text, speaker_id, speed, pitch, vol_boost, r_count):
         resolved_speaker_id, speaker = self._resolve_speaker(speaker_id, text)
-        sentences = re.split(r'(?<=[.!?…])\s+', text)
-        result = []
-        append = result.append
-
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence: continue
-
-            if len(sentence) <= 200:
-                append(sentence)
-                continue
-
-            parts = re.split(r'(?<=[,;:—])\s+', sentence)
-            current = []
-            cur_len = 0
-            cur_join = " ".join
-
-            for part in parts:
-                part = part.strip()
-                if not part: continue
-
-                if cur_len and cur_len < 60:
-                    current.append(part)
-                    cur_len += len(part) + 1
-                elif current:
-                    append(cur_join(current))
-                    current = [part]
-                    cur_len = len(part)
-                else:
-                    current = [part]
-                    cur_len = len(part)
-
-            if current:
-                if result and cur_len < 60:
-                    result[-1] += " " + cur_join(current)
-                else:
-                    append(cur_join(current))
-
-        sentences = result
-
+        speaker_name = speaker['name']
+        sentences = self.text_processor.split_sentences(text)
+        
         if not sentences:
             raise ValueError("No valid sentences found")
         
@@ -499,89 +575,126 @@ class TTSService:
         if DEBUG:
             for i, s in enumerate(sentences):
                 logger.debug(f"  [{i+1}] {s[:80]}{'...' if len(s) > 80 else ''}")
-
+        
+        total_duration = 0
+        total_time = 0
+        
         def generate():
-            first = True
+            nonlocal total_duration, total_time
+            first_chunk = True
+            
             for i, sentence in enumerate(sentences):
                 try:
                     if DEBUG:
-                        logger.debug(f"Synth {i+1}/{len(sentences)}")
-
-                    wav = self._synthesize_speech(
-                        sentence, resolved_speaker_id, speaker, speed, pitch, vol_boost
+                        logger.debug(f">>Processing sentence {i+1}/{len(sentences)}")
+                    
+                    quality_config = self._get_quality_config()
+                    wav_bytes, duration, inference_time = self._synthesize_sentence(
+                        sentence, speaker_name, speed, pitch, vol_boost, quality_config
                     )
-
-                    if len(wav) > 44 and wav[:4] == b'RIFF':
+                    if DEBUG and duration > 0:
+                        total_duration += duration
+                        total_time += inference_time
+                        logger.debug(f"  Duration: {duration:.2f}s | Time: {inference_time*1000:.0f}ms | RTF: {inference_time/duration:.3f}")
+                    
+                    if len(wav_bytes) > 44 and wav_bytes[:4] == b'RIFF':
                         offset = 12
-                        while offset < len(wav) - 8:
-                            chunk_id = wav[offset:offset+4]
-                            chunk_size = struct.unpack('<I', wav[offset+4:offset+8])[0]
+                        while offset < len(wav_bytes) - 8:
+                            chunk_id = wav_bytes[offset:offset+4]
+                            chunk_size = struct.unpack('<I', wav_bytes[offset+4:offset+8])[0]
 
                             if chunk_id == b'data':
-                                if first:
-                                    header = bytearray(wav[:offset+8])
+                                if first_chunk:
+                                    header = bytearray(wav_bytes[:offset+8])
                                     struct.pack_into('<I', header, 4, 0xFFFFFFFF)
                                     struct.pack_into('<I', header, offset+4, 0xFFFFFFFF)
                                     yield bytes(header)
-                                    first = False
+                                    first_chunk = False
 
-                                yield wav[offset+8:offset+8+chunk_size]
+                                yield wav_bytes[offset+8:offset+8+chunk_size]
                                 break
 
                             offset += 8 + chunk_size
                     else:
-                        yield wav
-
+                        yield wav_bytes
+                    
                 except Exception as e:
-                    logger.error(f"Error sentence {i+1}: {e}")
+                    logger.error(f"Error processing sentence {i+1}: {e}")
                     continue
             
-            logger.debug("All sentences processed")
+            if DEBUG and total_duration > 0:
+                logger.debug(f"  Stream #{r_count} completed. Total duration: {total_duration:.2f}s | Total time: {total_time*1000:.0f}ms | Avg RTF: {total_time/total_duration:.3f}")
         
         return generate()
     
     def synthesize_once(self, text, speaker_id, speed, pitch, vol_boost, r_count):
         resolved_speaker_id, speaker = self._resolve_speaker(speaker_id, text)
+        speaker_name = speaker['name']
+        sentences = self.text_processor.split_sentences(text)
         
-        logger.info(f"Speech request #{r_count}.")
+        if not sentences:
+            raise ValueError("No valid sentences found")
         
-        audio_data = self._synthesize_speech(
-            text, resolved_speaker_id, speaker, speed, pitch, vol_boost
-        )
-        return audio_data
-
-    def _synthesize_speech(self, text: str, speaker_id: int, speaker: dict, 
-                                 speed_percent: int, pitch_level: str, vol_boost: float) -> bytes:
-        t_start = time.time() if DEBUG else None
+        logger.info(f"Speech request #{r_count}: {len(sentences)} sentences.")
         
-        if self.cpu_monitor:
-            self.cpu_monitor.record_activity()
-            q = self.cpu_monitor.get_current_quality_config()
-        else:
-            q = Config.MAX_QUALITY_CONFIG
+        if DEBUG:
+            for i, s in enumerate(sentences):
+                logger.debug(f"  [{i+1}] {s[:80]}{'...' if len(s) > 80 else ''}")
         
-        sr = min(Config.MAX_SAMPLE_RATE, q["sample_rate"])
+        all_audio_data = bytearray()
+        first_sentence = True
+        total_duration = 0
+        total_time = 0
         
-        self.text_processor.set_ssml_params(speed_percent, pitch_level)
-        ssml, len_text = self.text_processor.process_text(text)
+        for i, sentence in enumerate(sentences):
+            try:
+                if DEBUG:
+                    logger.debug(f">>Processing sentence {i+1}/{len(sentences)}")
+                    
+                
+                quality_config = self._get_quality_config()
+                wav_bytes, duration, inference_time = self._synthesize_sentence(
+                    sentence, speaker_name, speed, pitch, vol_boost, quality_config
+                )
+                if DEBUG and duration > 0:
+                    total_duration += duration
+                    total_time += inference_time
+                    logger.debug(f"  Duration: {duration:.2f}s | Time: {inference_time*1000:.0f}ms | RTF: {inference_time/duration:.3f}")
+                
+                if first_sentence:
+                    all_audio_data.extend(wav_bytes)
+                    first_sentence = False
+                else:
+                    if len(wav_bytes) > 44:
+                        all_audio_data.extend(wav_bytes[44:])
+                    else:
+                        all_audio_data.extend(wav_bytes)
+                    
+            except Exception as e:
+                logger.error(f"Error processing sentence {i+1}: {e}")
+                continue
         
-        if DEBUG: 
-            logger.debug(f"N:{speaker['name']} S:{speed_percent}% P:{pitch_level} Vol:{vol_boost}dB SR:{sr} Q:{q['name']}")
-            logger.debug(f"L:{len_text} SSML:{ssml}")
+        if not all_audio_data:
+            raise RuntimeError("No audio data generated")
         
-        wav_bytes = self.audio_synthesizer.synthesize(
-            ssml, speaker['name'], sr,
-            q['put_accent'], q['put_yo'], q['put_stress_homo'], q['put_yo_homo'],
-            vol_boost
-        )
+        if len(all_audio_data) > 44 and all_audio_data[:4] == b'RIFF':
+            total_size = len(all_audio_data) - 8
+            struct.pack_into('<I', all_audio_data, 4, total_size)
+            
+            offset = 12
+            while offset < len(all_audio_data) - 8:
+                chunk_id = all_audio_data[offset:offset+4]
+                if chunk_id == b'data':
+                    data_size = len(all_audio_data) - offset - 8
+                    struct.pack_into('<I', all_audio_data, offset+4, data_size)
+                    break
+                chunk_size = struct.unpack('<I', all_audio_data[offset+4:offset+8])[0]
+                offset += 8 + chunk_size
         
-        if DEBUG and t_start:
-            num_samples = len(wav_bytes) - 44
-            dur = num_samples / (sr * 2)
-            if dur > 0: 
-                logger.debug(f"T:{(time.time()-t_start)*1000:.0f}ms D:{dur:.2f}s RTF:{(time.time()-t_start)/dur:.2f}")
+        if DEBUG and total_duration > 0:
+            logger.debug(f"  Speech #{r_count} completed. Total duration: {total_duration:.2f}s | Total time: {total_time*1000:.0f}ms | Avg RTF: {total_time/total_duration:.3f}")
         
-        return wav_bytes
+        return bytes(all_audio_data)
 
 
 class HTTPServer:
@@ -700,7 +813,6 @@ class HTTPServer:
 
 class Application:
     """запуск приложения"""
-    
     def __init__(self):
         self.model = None
         self.cpu_monitor = None
@@ -721,20 +833,17 @@ class Application:
     def warmup(self):
         logger.info("Warming up model...")
         try:
-            CUDA = Config.DEVICE.type == 'cuda'
-            tp = TextProcessor()
-            tp.set_ssml_params(100, "medium")
-            texts = ["привет", "как дела?", "это прогрев модели для устранения задержки"]
+            texts = ["<speak>привет!</speak>",
+                     "<speak>как дела?</speak>",
+                     "<speak>как погода? азаза. мне нравятся ноги твои и глаза.</speak>"]
             speaker = Config.SPEAKERS[0]["name"]
 
             for text in texts:
-                ssml, _ = tp.process_text(text)
-
                 with torch.no_grad():
-                    audio = self.model.apply_tts(ssml_text=ssml, speaker=speaker, sample_rate=48000,
+                    audio = self.model.apply_tts(text=text, speaker=speaker, sample_rate=24000,
                                 put_accent=True, put_yo=True, put_stress_homo=True, put_yo_homo=True)
 
-                    if CUDA: torch.cuda.synchronize()
+                    if Config.DEVICE.type == 'cuda': torch.cuda.synchronize()
                     else: _ = audio.numpy()
                     del audio
             for i in range(1000):
@@ -805,12 +914,21 @@ class Application:
             except: pass
         
         self.warmup()
-        print('=' * 60)
-        print(f"  Silero TTS Real-Time Server v{MAIN_VERSION} by pav13")
-        print("   GitHub: github.com/pav1388/Silero-TTS-Real-Time-Server")
-        print(f"    Server URL: http://{Config.HOST}:{Config.PORT}")
-        if DEBUG: print("  DEBUG mode ON")
-        print('=' * 60)
+        
+        lines = [
+            f"Silero TTS Real-Time Server v{MAIN_VERSION} by pav13",
+            " GitHub: github.com/pav1388/Silero-TTS-Real-Time-Server",
+            f"  Server URL: http://{Config.HOST}:{Config.PORT}"
+        ]
+        max_len = max(len(line) for line in lines)
+        width = max_len + 4
+        
+        print("")
+        print('#' * (width + 2))
+        for line in lines:
+            print(f"#  {line:<{max_len}}  #")
+        print('#' * (width + 2))
+        print("")
         print("READY")
         self.running = True
         
@@ -819,10 +937,10 @@ class Application:
         finally: self.stop()
 
 if __name__ == "__main__":
-    print()
+    print("")
     print("   ______  _____  _        ______  ______   ______       _______ _______  ______")
     print("  / |       | |  | |      | |     | |  | \\ / |  | \\        | |     | |   / |")
     print("  '------.  | |  | |   _  | |---- | |__| | | |  | |        | |     | |   '------.")
     print("   ____|_/ _|_|_ |_|__|_| |_|____ |_|  \\_\\ \\_|__|_/        |_|     |_|    ____|_/")
-    print()
+    print("")
     Application().run()
