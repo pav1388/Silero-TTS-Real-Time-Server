@@ -26,7 +26,7 @@ for /f "tokens=2 delims=^= " %%a in ('findstr "MAIN_VERSION" %PROGRAMFILE% 2^>nu
     )
 )
 if not defined VERSION set VERSION=0.0.0
-set RELEASE_DIR=%FOLDERNAME%-%VERSION%
+set RELEASE_DIR=%FOLDERNAME%-%VERSION%-win7x64
 
 echo.
 echo +--------------------------------------------------------------------+

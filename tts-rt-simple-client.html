@@ -3,8 +3,8 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <title>Silero TTS Simple Client</title>
-    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEACABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAoGAAgJBgAGCAUABgcEAAcIBQAHCAQABQcEAAUGBAAGBwUABgkFABYXFQB4eXgAenp5AHl6eABERUMAFBUSAM3NzQDT09MApqemAKenpgC0tbQA9/b2AD0+PAAEBwQABAYEAAUHBQA4OTYA9/f3ABMVEgDLy8oAa2xrADQ1MgD7+voAPT89ACMlIwAVFxQAh4eGAPn5+QDp6ekAjI2MAE1OTQAKCwkABAYDAHFycAC8vbwA/f39ALO0swALDAoACQoIABUVEwAGBgQAGx0bAOPj4gBlZmUABQYFAAYGBQA+Pz0A8vLyAMnJyABpamkAKSonAPT09AChoqEAhoaFAJKTkQDw8PAAOTs5AElLSACio6IAo6OiAERGRAAFBgMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAgISAAAAAAAAAAAAABICAgICAhICAAAAAAAAAAICAQEBAQHBwgrAAAAAAA4CARERUZGRkcZGSsAAAAICAQ9Pj9AQEFCQxkrCAAANzc4OToICAQEOzwICAgAAAgZCDEyMxoJNDU2GRkIAAgZGRgaCRssLS4vMBkZBwcaBxkZBCUmJygpKggYKwgEAAcIByAhIggICCMkBwgEAAAHCBobHB0HCAQeHwcIBwAABAcHEBESExQVFhcYGQcAAAAHBwcLDA0NDg8ICQkAAAAAAAcHBAgHBwkEBAoAAAAAAAAAAwMEBAQFBgYAAAAAAAAAAAAAAAECAAAAAAAAAPw/AADwDwAA4AcAAMADAACAAQAAgAEAAIABAAAAAAAAAAAAAIABAACAAQAAgAEAAMADAADgBwAA8A8AAP5/AAA=">
-	<style type="text/css">
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEACABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAoGAAgJBgAGCAUABgcEAAcIBQAHCAQABQcEAAUGBAAGBwUABgkFABYXFQB4eXgAenp5AHl6eABERUMAFBUSAM3NzQDT09MApqemAKenpgC0tbQA9/b2AD0+PAAEBwQABAYEAAUHBQA4OTYA9/f3ABMVEgDLy8oAa2xrADQ1MgD7+voAPT89ACMlIwAVFxQAh4eGAPn5+QDp6ekAjI2MAE1OTQAKCwkABAYDAHFycAC8vbwA/f39ALO0swALDAoACQoIABUVEwAGBgQAGx0bAOPj4gBlZmUABQYFAAYGBQA+Pz0A8vLyAMnJyABpamkAKSonAPT09AChoaEAhoaFAJKTkQDw8PAAOTs5AElLSACio6IAo6OiAERGRAAFBgMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAgISAAAAAAAAAAAAABICAgICAhICAAAAAAAAAAICAQEBAQHBwgrAAAAAAA4CARERUZGRkcZGSsAAAAICAQ9Pj9AQEFCQxkrCAAANzc4OToICAQEOzwICAgAAAgZCDEyMxoJNDU2GRkIAAgZGRgaCRssLS4vMBkZBwcaBxkZBCUmJygpKggYKwgEAAcIByAhIggICCMkBwgEAAAHCBobHB0HCAQeHwcIBwAABAcHEBESExQVFhcYGQcAAAAHBwcLDA0NDg8ICQkAAAAAAAcHBAgHBwkEBAoAAAAAAAAAAwMEBAQFBgYAAAAAAAAAAAAAAAECAAAAAAAAAPw/AADwDwAA4AcAAMADAACAAQAAgAEAAIABAAAAAAAAAAAAAIABAACAAQAAgAEAAMADAADgBwAA8A8AAP5/AAA=">
+    <style type="text/css">
         body {
             margin: 0;
             padding: 8px;
@@ -187,7 +187,7 @@
             border-top: 1px dotted #808080;
         }
         .example-radio-group label {
-            font-weight: normal;
+            font-weight: bold;
             margin-right: 12px;
             white-space: nowrap;
         }
@@ -247,6 +247,41 @@
             color: white;
             border-radius: 2px;
         }
+        .radio-group-mode {
+            margin-bottom: 12px;
+            padding: 6px;
+            background: #D0D0D0;
+            border: 1px solid #000000;
+        }
+        .radio-group-mode label {
+			display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+		.radio-group-mode label:last-child {
+			margin-bottom: 0;
+		}
+        .checkbox-group {
+            margin: 8px 0;
+            padding: 4px;
+            background: #D4D0C8;
+            border: 1px solid #000000;
+        }
+        .checkbox-group label {
+            display: block;
+            margin: 4px 0;
+            font-weight: normal;
+        }
+        .sample-rate-group {
+            margin: 8px 0;
+            padding: 4px;
+            background: #D4D0C8;
+            border: 1px solid #000000;
+        }
+        .sample-rate-group label {
+            margin-right: 12px;
+            font-weight: normal;
+        }
     </style>
 </head>
 <body>
@@ -263,50 +298,82 @@
         </table>
     </div>
 
+	<div class="radio-group-mode">
+		<label>
+			<input type="radio" name="processing-mode" value="server" checked>
+			Текст обрабатывается сервером и моделью, /speak и /speak/stream
+		</label>
+		<label>
+			<input type="radio" name="processing-mode" value="raw">
+			Текст обрабатывается только моделью, /speak/raw
+		</label>
+	</div>
+
     <table class="two-cols" cellpadding="0" cellspacing="0" width="100%">
         <tr>
             <td width="50%" style="padding-right: 6px;">
-                <div class="speaker-panel">
+                <div class="speaker-panel" id="speaker-panel">
                     <div style="font-weight: bold; margin-bottom: 6px;">
                         <a href="#" onclick="loadSpeakersFromServer(); return false;" style="font-size: 12px; font-weight: bold;">Обновить список голосов</a>
                         <br>
-                        Голоса (с индивидуальными настройками):
+                        <span id="speaker-panel-title">Голоса (с индивидуальными настройками):</span>
                     </div>
                     <div id="speaker-options"></div>
+                    <div id="raw-sample-rate-panel" style="display: none;">
+                        <div class="sample-rate-group">
+                            <div style="font-weight: bold; margin-bottom: 4px;">Частота дискретизации, Гц:</div>
+                            <label><input type="radio" name="sample-rate" value="8000">8000</label>
+                            <label><input type="radio" name="sample-rate" value="24000">24000</label>
+                            <label><input type="radio" name="sample-rate" value="48000" checked>48000</label>
+                        </div>
+                    </div>
                 </div>
               </td>
             <td width="50%">
-                <div class="param-panel">
+                <div class="param-panel" id="client-params-panel">
                     <div style="font-weight: bold; margin-bottom: 6px;">Клиентские параметры</div>
-                    <div class="param-row">
-                        <span class="param-label">Speed:</span>
-                        <div class="spin-group">
-                            <button type="button" id="speed-minus">-</button>
-                            <input type="text" id="speed" value="0.0" readonly size="5">
-                            <button type="button" id="speed-plus">+</button>
+                    <div id="server-mode-params">
+                        <div class="param-row">
+                            <span class="param-label">Speed:</span>
+                            <div class="spin-group">
+                                <button type="button" id="speed-minus">-</button>
+                                <input type="text" id="speed" value="0.0" readonly size="5">
+                                <button type="button" id="speed-plus">+</button>
+                            </div>
+                            <span class="value-tip">-10..10</span>
                         </div>
-                        <span class="value-tip">-10..10</span>
-                    </div>
-                    <div class="param-row">
-                        <span class="param-label">Pitch:</span>
-                        <div class="spin-group">
-                            <button type="button" id="pitch-minus">-</button>
-                            <input type="text" id="pitch" value="0.0" readonly size="5">
-                            <button type="button" id="pitch-plus">+</button>
+                        <div class="param-row">
+                            <span class="param-label">Pitch:</span>
+                            <div class="spin-group">
+                                <button type="button" id="pitch-minus">-</button>
+                                <input type="text" id="pitch" value="0.0" readonly size="5">
+                                <button type="button" id="pitch-plus">+</button>
+                            </div>
+                            <span class="value-tip">-10..10</span>
                         </div>
-                        <span class="value-tip">-10..10</span>
+                        <div class="stream-checkbox">
+                            <label>
+                                <input type="checkbox" id="stream-mode" checked="checked">
+                                <b>Режим потока (ускоряет начало воспроизведения)</b>
+                            </label>
+                        </div>
+                        <div class="param-info">
+                            Итоговые параметры для сервера:<br>
+                            <span id="final-speed">-</span><br>
+                            <span id="final-pitch">-</span><br>
+                            <span id="final-vol">-</span>
+                        </div>
                     </div>
-                    <div class="stream-checkbox">
-                        <label>
-                            <input type="checkbox" id="stream-mode" checked="checked">
-                            <b>Режим потока (ускоряет начало воспроизведения)</b>
-                        </label>
-                    </div>
-                    <div class="param-info">
-                        Итоговые параметры для сервера:<br>
-                        <span id="final-speed">-</span><br>
-                        <span id="final-pitch">-</span><br>
-                        <span id="final-vol">-</span>
+                    <div id="raw-mode-params" style="display: none;">
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="put-accent" checked> put_accent (расстановка ударений)</label>
+                            <label><input type="checkbox" id="put-yo" checked> put_yo (ёфикация)</label>
+                            <label><input type="checkbox" id="put-stress-homo" checked> put_stress_homo (ударения в омографах)</label>
+                            <label><input type="checkbox" id="put-yo-homo" checked> put_yo_homo (ё в омографах)</label>
+                        </div>
+                        <div class="param-info">
+                            Примечание: используйте SSML для регулировки скорости, тембра и пауз. Тег &lt;speak&gt; уже установлен для всего текста. Для ударений '+' перед гласной.
+                        </div>
                     </div>
                 </div>
               </td>
@@ -350,6 +417,7 @@
     var speedValue = 0.0;
     var pitchValue = 0.0;
     var currentSpeakerId = 0;
+    var currentMode = "server"; // "server" или "raw"
     
     var serverUrlInput = document.getElementById('server-url');
     var textarea = document.getElementById('text');
@@ -370,6 +438,19 @@
     var streamCheckbox = document.getElementById('stream-mode');
     var progressBar = document.getElementById('progress-bar');
     var progressFill = document.getElementById('progress-fill');
+    var serverModeParams = document.getElementById('server-mode-params');
+    var rawModeParams = document.getElementById('raw-mode-params');
+    var rawSampleRatePanel = document.getElementById('raw-sample-rate-panel');
+    var speakerPanelTitle = document.getElementById('speaker-panel-title');
+    
+    // Чекбоксы для raw режима
+    var putAccent = document.getElementById('put-accent');
+    var putYo = document.getElementById('put-yo');
+    var putStressHomo = document.getElementById('put-stress-homo');
+    var putYoHomo = document.getElementById('put-yo-homo');
+    
+    // Радиокнопки выбора режима
+    var modeRadios = document.querySelectorAll('input[name="processing-mode"]');
     
     var exampleTexts = {
         "1": "Ехал Грека через реку, видит Грека — в реке рак. Сунул Грека руку в реку, рак за руку Греку — цап! Мышка сушек насушила, мышка мышек пригласила, мышки сушки кушать стали, з+убки сразу же сломали.",
@@ -386,81 +467,50 @@
         statusMsg.style.background = isError ? '#FFCCCC' : '#CCFFCC';
     }
     
-    // Загрузка списка голосов с сервера
-    async function loadSpeakersFromServer() {
-        var server = serverUrlInput.value;
-        if (!server) return false;
-        
-        try {
-            var response = await fetch(server + '/speakers');
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            var data = await response.json();
-            
-            if (data && data.silero && Array.isArray(data.silero)) {
-                // Обновляем список голосов
-                SPEAKERS = data.silero.map(function(spk, idx) {
-                    return {
-                        id: spk.id,
-                        name: spk.name,
-                        display: spk.id + " " + spk.name + " " + (spk.gender || 'n/d') + " " + (spk.lang || 'n/d')
-                    };
-                });
-                
-                // Создаем пресеты для каждого голоса
-                VOICE_PRESETS = {};
-                for (var i = 0; i < SPEAKERS.length; i++) {
-                    var spk = SPEAKERS[i];
-                    // Базовые настройки для всех голосов
-                    var preset = {
-                        "vol_boost": 0,
-                        "base_speed": 100,
-                        "base_pitch": "medium",
-                        "name": spk.name,
-                        "gender": spk.gender
-                    };
-                    
-                    // Индивидуальные настройки для известных голосов
-                    if (spk.name === "aidar") {
-                        preset.vol_boost = 0;
-                        preset.base_speed = 119;
-                        preset.base_pitch = "high";
-                    } else if (spk.name === "baya") {
-                        preset.vol_boost = 1.5;
-                        preset.base_speed = 100;
-                        preset.base_pitch = "low";
-                    } else if (spk.name === "kseniya") {
-                        preset.vol_boost = 0;
-                        preset.base_speed = 100;
-                        preset.base_pitch = "medium";
-                    } else if (spk.name === "eugene") {
-                        preset.vol_boost = -1;
-                        preset.base_speed = 89;
-                        preset.base_pitch = "high";
-                    } else if (spk.name === "xenia") {
-                        preset.vol_boost = 0.5;
-                        preset.base_speed = 100;
-                        preset.base_pitch = "medium";
-                    } else if (spk.name === "RANDOM") {
-                        preset.vol_boost = 0;
-                        preset.base_speed = 100;
-                        preset.base_pitch = "medium";
-                    } else if (spk.name === "HASH") {
-                        preset.vol_boost = 0;
-                        preset.base_speed = 100;
-                        preset.base_pitch = "medium";
-                    }
-                    
-                    VOICE_PRESETS[spk.id] = preset;
-                }
-                
-                renderSpeakers();
-                return true;
-            }
-        } catch (error) {
-            console.warn('Failed to load speakers:', error);
-            return false;
+    // Переключение режимов интерфейса
+    function toggleMode() {
+        if (currentMode === "server") {
+            serverModeParams.style.display = "block";
+            rawModeParams.style.display = "none";
+            rawSampleRatePanel.style.display = "none";
+            speakerPanelTitle.innerHTML = "Голоса (с индивидуальными настройками):";
+            renderSpeakers();
+        } else {
+            serverModeParams.style.display = "none";
+            rawModeParams.style.display = "block";
+            rawSampleRatePanel.style.display = "block";
+            speakerPanelTitle.innerHTML = "Голоса (только имена, без настроек):";
+            renderSpeakersForRawMode();
         }
-        return false;
+        updateUrlPreview();
+    }
+    
+    function renderSpeakersForRawMode() {
+        var container = document.getElementById('speaker-options');
+        if (!container) return;
+        var rawSpeakers = SPEAKERS.slice(0, 5);
+        var html = '';
+        for (var i = 0; i < rawSpeakers.length; i++) {
+            var spk = rawSpeakers[i];
+            var checkedAttr = (i === 0 && currentSpeakerId === spk.id) ? ' checked="checked"' : '';
+            html += '<div class="speaker-item" onclick="document.getElementById(\'spk_' + spk.id + '\').click();">' +
+                    '<input type="radio" name="speaker" id="spk_' + spk.id + '" value="' + spk.id + '"' + checkedAttr + ' />' +
+                    '<label for="spk_' + spk.id + '"> <b>' + spk.display + '</b></label>' +
+                    '</div>';
+        }
+        container.innerHTML = html;
+        
+        var radios = document.getElementsByName('speaker');
+        for (var r = 0; r < radios.length; r++) {
+            radios[r].onclick = function() { 
+                currentSpeakerId = parseInt(this.value, 10);
+                updateUrlPreview();
+            };
+        }
+        
+        if (rawSpeakers.length > 0 && currentSpeakerId === 0) {
+            currentSpeakerId = rawSpeakers[0].id;
+        }
     }
     
     function renderSpeakers() {
@@ -508,129 +558,108 @@
         updateFinalParams();
     }
     
+    // Загрузка списка голосов с сервера
+    async function loadSpeakersFromServer() {
+        var server = serverUrlInput.value;
+        if (!server) return false;
+        
+        try {
+            var response = await fetch(server + '/speakers');
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var data = await response.json();
+            
+            if (data && data.silero && Array.isArray(data.silero)) {
+                SPEAKERS = data.silero.map(function(spk, idx) {
+                    return {
+                        id: spk.id,
+                        name: spk.name,
+                        display: spk.id + " " + spk.name + " " + (spk.gender || 'n/d') + " " + (spk.lang || 'n/d')
+                    };
+                });
+                
+                VOICE_PRESETS = {};
+                for (var i = 0; i < SPEAKERS.length; i++) {
+                    var spk = SPEAKERS[i];
+                    var preset = {
+                        "vol_boost": 0,
+                        "base_speed": 100,
+                        "base_pitch": "medium",
+                        "name": spk.name,
+                        "gender": spk.gender
+                    };
+                    if (spk.name === "aidar") {
+                        preset.vol_boost = 0;
+                        preset.base_speed = 119;
+                        preset.base_pitch = "high";
+                    } else if (spk.name === "baya") {
+                        preset.vol_boost = 1.5;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "low";
+                    } else if (spk.name === "kseniya") {
+                        preset.vol_boost = 0;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "medium";
+                    } else if (spk.name === "eugene") {
+                        preset.vol_boost = -1;
+                        preset.base_speed = 89;
+                        preset.base_pitch = "high";
+                    } else if (spk.name === "xenia") {
+                        preset.vol_boost = 0.5;
+                        preset.base_speed = 100;
+                        preset.base_pitch = "medium";
+                    }
+                    VOICE_PRESETS[spk.id] = preset;
+                }
+                
+                if (currentMode === "server") {
+                    renderSpeakers();
+                } else {
+                    renderSpeakersForRawMode();
+                }
+                return true;
+            }
+        } catch (error) {
+            console.warn('Failed to load speakers:', error);
+            return false;
+        }
+        return false;
+    }
+    
     async function restartServer() {
         var server = serverUrlInput.value;
         if (!server) {
             alert('Введите URL сервера');
             return;
         }
-        
         showStatus('Отправка запроса на перезагрузку сервера...', false);
-        
         try {
             var response = await fetch(server + '/restart', {method: 'POST'});
             if (response.ok) {
-                showStatus('Сервер перезагружается... Подождите ~10 секунд или обновите список голосов вручную', false);
-                // Ждем перезагрузки и обновляем список голосов
-                setTimeout(function() {
-                    loadSpeakersFromServer();
-                }, 10000);
+                showStatus('Сервер перезагружается... Подождите ~12 секунд', false);
+                setTimeout(function() { loadSpeakersFromServer(); }, 12000);
             } else {
                 var errorText = await response.text();
                 showStatus('Ошибка перезагрузки: ' + errorText, true);
             }
         } catch (error) {
-            showStatus('Ошибка: ' + error.message + ' (сервер может быть недоступен во время перезагрузки)', true);
-            // Все равно пробуем обновить список через несколько секунд
-            setTimeout(function() {
-                loadSpeakersFromServer();
-            }, 10000);
+            showStatus('Ошибка: ' + error.message, true);
+            setTimeout(function() { loadSpeakersFromServer(); }, 12000);
         }
     }
     
-    function getSelectedSpeakerId() {
-        return currentSpeakerId;
-    }
+    function getSelectedSpeakerId() { return currentSpeakerId; }
+    function getFinalSpeedPercent() { var p = VOICE_PRESETS[currentSpeakerId]; var sp = p ? p.base_speed : 100; if(speedValue>0) sp += speedValue*20; else sp += speedValue*6; return Math.max(40,Math.min(300,Math.round(sp))); }
+    function getFinalPitchLevel() { var lvl = ["x-low","low","medium","high","x-high"]; var p = VOICE_PRESETS[currentSpeakerId]; var bi = p ? lvl.indexOf(p.base_pitch) : 2; if(bi==-1) bi=2; var d = Math.round((pitchValue+10)/20*4)-2; return lvl[Math.max(0,Math.min(4,bi+d))]; }
+    function getFinalVolBoost() { var p = VOICE_PRESETS[currentSpeakerId]; return p ? p.vol_boost : 0; }
+    function isStreamMode() { return streamCheckbox.checked; }
     
-    function getFinalSpeedPercent() {
-        var preset = VOICE_PRESETS[currentSpeakerId];
-        if (!preset) return 100;
-        
-        var baseSpeed = preset.base_speed;
-        var speedPercent;
-        
-        if (speedValue > 0) {
-            speedPercent = baseSpeed + speedValue * 20;
-        } else {
-            speedPercent = baseSpeed + speedValue * 6;
-        }
-        
-        speedPercent = Math.max(40, Math.min(300, speedPercent));
-        return Math.round(speedPercent);
-    }
-    
-    function getFinalPitchLevel() {
-        var preset = VOICE_PRESETS[currentSpeakerId];
-        if (!preset) return "medium";
-        
-        var pitchLevels = ["x-low", "low", "medium", "high", "x-high"];
-        var baseIdx = pitchLevels.indexOf(preset.base_pitch);
-        if (baseIdx === -1) baseIdx = 2;
-        
-        var delta = Math.round((pitchValue + 10) / 20 * 4) - 2;
-        var pitchIndex = Math.max(0, Math.min(4, baseIdx + delta));
-        
-        return pitchLevels[pitchIndex];
-    }
-    
-    function getFinalVolBoost() {
-        var preset = VOICE_PRESETS[currentSpeakerId];
-        return preset ? preset.vol_boost : 0;
-    }
-    
-    function isStreamMode() {
-        return streamCheckbox.checked;
-    }
-    
-    function updateFinalParams() {
-        var finalSpeed = getFinalSpeedPercent();
-        var finalPitch = getFinalPitchLevel();
-        var finalVol = getFinalVolBoost();
-        
-        finalSpeedSpan.innerHTML = 'speed: ' + finalSpeed + '%';
-        finalPitchSpan.innerHTML = 'pitch: ' + finalPitch;
-        finalVolSpan.innerHTML = 'vol_boost: ' + finalVol + ' dB';
-    }
-    
-    function updateSpeedUI() {
-        var rounded = Math.round(speedValue * 10) / 10;
-        speedInput.value = rounded.toFixed(1);
-        updateFinalParams();
-        updateUrlPreview();
-    }
-    
-    function clampSpeed(val) {
-        if (val < -10) return -10;
-        if (val > 10) return 10;
-        return val;
-    }
-    
-    function changeSpeed(delta) {
-        var newSpeed = speedValue + delta;
-        newSpeed = Math.round(newSpeed * 10) / 10;
-        speedValue = clampSpeed(newSpeed);
-        updateSpeedUI();
-    }
-    
-    function updatePitchUI() {
-        var rounded = Math.round(pitchValue * 10) / 10;
-        pitchInput.value = rounded.toFixed(1);
-        updateFinalParams();
-        updateUrlPreview();
-    }
-    
-    function clampPitch(val) {
-        if (val < -10) return -10;
-        if (val > 10) return 10;
-        return val;
-    }
-    
-    function changePitch(delta) {
-        var newPitch = pitchValue + delta;
-        newPitch = Math.round(newPitch * 10) / 10;
-        pitchValue = clampPitch(newPitch);
-        updatePitchUI();
-    }
+    function updateFinalParams() { if(currentMode==="server"){finalSpeedSpan.innerHTML='speed: '+getFinalSpeedPercent()+'%';finalPitchSpan.innerHTML='pitch: '+getFinalPitchLevel();finalVolSpan.innerHTML='vol_boost: '+getFinalVolBoost()+' dB';} }
+    function updateSpeedUI() { var r=Math.round(speedValue*10)/10; speedInput.value=r.toFixed(1); updateFinalParams(); updateUrlPreview(); }
+    function clampSpeed(v){return v<-10?-10:(v>10?10:v);}
+    function changeSpeed(d){speedValue=clampSpeed(Math.round((speedValue+d)*10)/10); updateSpeedUI();}
+    function updatePitchUI() { var r=Math.round(pitchValue*10)/10; pitchInput.value=r.toFixed(1); updateFinalParams(); updateUrlPreview();}
+    function clampPitch(v){return v<-10?-10:(v>10?10:v);}
+    function changePitch(d){pitchValue=clampPitch(Math.round((pitchValue+d)*10)/10); updatePitchUI();}
     
     function buildRequestUrl() {
         var server = serverUrlInput.value;
@@ -641,202 +670,125 @@
         if (server === '' || text === '') return null;
         
         var speakerId = getSelectedSpeakerId();
-        var speedParam = getFinalSpeedPercent();
-        var pitchParam = getFinalPitchLevel();
-        var volParam = getFinalVolBoost();
+        var speakerName = "aidar";
+        for(var i=0;i<SPEAKERS.length;i++) if(SPEAKERS[i].id==speakerId) { speakerName = SPEAKERS[i].name; break; }
         
-        var url;
-		if (isStreamMode()) {
-            url = server + '/speak/stream?';
+        if (currentMode === "raw") {
+            var sampleRate = 48000;
+            var srRadios = document.querySelectorAll('input[name="sample-rate"]');
+            for(var r=0;r<srRadios.length;r++) if(srRadios[r].checked) sampleRate = parseInt(srRadios[r].value,10);
+			var maxLength = 900;
+			if (text.length > maxLength) {
+				text = text.substring(0, maxLength);
+				showStatus('Текст обрезан до ' + maxLength + ' символов', false);
+			}
+            var url = server + '/speak/raw?';
+            url += 'text=' + encodeURIComponent('<speak>' + text + '</speak>');
+            url += '&speaker=' + encodeURIComponent(speakerName);
+            url += '&sample_rate=' + sampleRate;
+            url += '&put_accent=' + (putAccent.checked ? 'true' : 'false');
+            url += '&put_yo=' + (putYo.checked ? 'true' : 'false');
+            url += '&put_stress_homo=' + (putStressHomo.checked ? 'true' : 'false');
+            url += '&put_yo_homo=' + (putYoHomo.checked ? 'true' : 'false');
+            return url;
         } else {
-			url = server + '/speak?';
-		}
-        url += 'text=' + encodeURIComponent(text);
-        url += '&id=' + encodeURIComponent(speakerId);
-        url += '&speed=' + encodeURIComponent(speedParam);
-        url += '&pitch=' + encodeURIComponent(pitchParam);
-        url += '&vol_boost=' + encodeURIComponent(volParam);
-        return url;
+            var speedParam = getFinalSpeedPercent();
+            var pitchParam = getFinalPitchLevel();
+            var volParam = getFinalVolBoost();
+            var endpoint = isStreamMode() ? '/speak/stream' : '/speak';
+            var url = server + endpoint + '?';
+            url += 'text=' + encodeURIComponent(text);
+            url += '&id=' + encodeURIComponent(speakerId);
+            url += '&speed=' + encodeURIComponent(speedParam);
+            url += '&pitch=' + encodeURIComponent(pitchParam);
+            url += '&vol_boost=' + encodeURIComponent(volParam);
+            return url;
+        }
     }
     
-    function updateUrlPreview() {
-        var url = buildRequestUrl();
-        if (!url) {
-            urlPreviewDiv.innerHTML = '[X] Заполните текст и укажите URL сервера';
-            return;
-        }
-        urlPreviewDiv.innerHTML = url;
-    }
+    function updateUrlPreview() { var url = buildRequestUrl(); urlPreviewDiv.innerHTML = url ? url : '[X] Заполните текст и укажите URL сервера'; }
     
     function openInBrowser() {
         var server = serverUrlInput.value;
         var text = textarea.value;
-        if (!server) {
-            alert('Введите URL сервера (например http://127.0.0.1:23457)');
-            return;
-        }
-        if (!text) {
-            alert('Введите текст для синтеза');
-            return;
-        }
+        if (!server) { alert('Введите URL сервера'); return; }
+        if (!text) { alert('Введите текст для синтеза'); return; }
         var url = buildRequestUrl();
-        if (!url) {
-            alert('Не удалось сформировать ссылку');
-            return;
-        }
+        if (!url) { alert('Не удалось сформировать ссылку'); return; }
         
         if (isStreamMode()) {
-            fetch(url)
-                .then(function(response) {
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
-                    return response.blob();
-                })
-                .then(function(blob) {
-                    var downloadUrl = URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = 'silero_tts.wav';
-                    a.click();
-                    URL.revokeObjectURL(downloadUrl);
-                })
-                .catch(function(error) {
-                    alert('Ошибка: ' + error.message);
-                });
-        } else {
-            window.open(url, '_blank');
-        }
+            fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status); return r.blob();})
+                .then(b=>{var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='silero_tts.wav'; a.click(); URL.revokeObjectURL(a.href);})
+                .catch(e=>alert('Ошибка: '+e.message));
+        } else { window.open(url, '_blank'); }
     }
     
     async function playAudio() {
         var server = serverUrlInput.value;
         var text = textarea.value;
-        if (!server) {
-            alert('Введите URL сервера (например http://127.0.0.1:23457)');
-            return;
-        }
-        if (!text) {
-            alert('Введите текст для синтеза');
-            return;
-        }
+        if (!server) { alert('Введите URL сервера'); return; }
+        if (!text) { alert('Введите текст для синтеза'); return; }
         var url = buildRequestUrl();
-        if (!url) {
-            alert('Не удалось сформировать ссылку');
-            return;
-        }
+        if (!url) { alert('Не удалось сформировать ссылку'); return; }
         
         var streaming = isStreamMode();
-        
         showStatus(streaming ? 'Подключение к потоку...' : 'Генерация...', false);
-        playBtn.disabled = true;
-        openBtn.disabled = true;
-        
-        if (streaming) {
-            progressBar.style.display = 'block';
-            progressFill.style.width = '10%';
-        }
+        playBtn.disabled = true; openBtn.disabled = true;
+        if (streaming) { progressBar.style.display = 'block'; progressFill.style.width = '10%'; }
         
         try {
             audioPlayer.src = url;
             audioPlayer.style.display = 'block';
             audioPlayer.load();
-            
             var playPromise = audioPlayer.play();
-            
             if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    if (streaming) {
-                        progressFill.style.width = '100%';
-                        showStatus('Воспроизведение началось (поток)', false);
-                        setTimeout(function() {
-                            progressBar.style.display = 'none';
-                        }, 500);
-                    } else {
-                        showStatus('Воспроизведение началось', false);
-                    }
-                })
-                .catch(error => {
-                    console.error("Play failed:", error);
-                    showStatus('Ошибка воспроизведения: ' + error.message, true);
-                    progressBar.style.display = 'none';
-                });
+                playPromise.then(()=>{ if(streaming){progressFill.style.width='100%';showStatus('Воспроизведение началось (поток)',false);setTimeout(()=>progressBar.style.display='none',500);} else showStatus('Воспроизведение началось',false); })
+                .catch(error=>{ console.error("Play failed:",error); showStatus('Ошибка воспроизведения: '+error.message,true); progressBar.style.display='none'; });
             }
-            
-            audioPlayer.onended = function() {};
-        } catch (error) {
-            console.error('Error:', error);
-            showStatus('Ошибка: ' + error.message, true);
-            progressBar.style.display = 'none';
-        } finally {
-            playBtn.disabled = false;
-            openBtn.disabled = false;
-        }
+        } catch(error) { console.error('Error:',error); showStatus('Ошибка: '+error.message,true); progressBar.style.display='none'; }
+        finally { playBtn.disabled = false; openBtn.disabled = false; }
     }
     
-    function saveServerUrlToCookie() {
-        var url = serverUrlInput.value;
-        if (url) {
-            document.cookie = 'tts_server_ie6=' + encodeURIComponent(url) + '; path=/';
-        }
-    }
-    
-    function loadServerUrlFromCookie() {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var c = cookies[i];
-            while (c.charAt(0) === ' ') c = c.substring(1);
-            if (c.indexOf('tts_server_ie6=') === 0) {
-                var saved = decodeURIComponent(c.substring('tts_server_ie6='.length));
-                if (saved) serverUrlInput.value = saved;
-                break;
-            }
-        }
-    }
-    
-    function bindExampleRadios() {
-        var exampleRadios = document.querySelectorAll('input[name="example"]');
-        for (var i = 0; i < exampleRadios.length; i++) {
-            exampleRadios[i].onclick = function() {
-                var val = this.value;
-                if (exampleTexts[val]) {
-                    textarea.value = exampleTexts[val];
-                    updateUrlPreview();
-                }
-            };
-        }
-    }
+    function saveServerUrlToCookie() { var url = serverUrlInput.value; if(url) document.cookie = 'tts_server_ie6=' + encodeURIComponent(url) + '; path=/'; }
+    function loadServerUrlFromCookie() { var cookies = document.cookie.split(';'); for(var i=0;i<cookies.length;i++){ var c=cookies[i]; while(c.charAt(0)===' ')c=c.substring(1); if(c.indexOf('tts_server_ie6=')===0){ var saved=decodeURIComponent(c.substring('tts_server_ie6='.length)); if(saved) serverUrlInput.value=saved; break; } } }
+    function bindExampleRadios() { var ex=document.querySelectorAll('input[name="example"]'); for(var i=0;i<ex.length;i++) ex[i].onclick=function(){ if(exampleTexts[this.value]) textarea.value=exampleTexts[this.value]; updateUrlPreview(); }; }
     
     function bindEvents() {
         speedMinus.onclick = function() { changeSpeed(-0.5); };
         speedPlus.onclick = function() { changeSpeed(0.5); };
         pitchMinus.onclick = function() { changePitch(-0.5); };
         pitchPlus.onclick = function() { changePitch(0.5); };
-        
         serverUrlInput.onkeyup = function() { updateUrlPreview(); };
         serverUrlInput.onchange = function() { saveServerUrlToCookie(); updateUrlPreview(); };
         textarea.onkeyup = function() { updateUrlPreview(); };
-        textarea.onchange = function() { updateUrlPreview(); };
         openBtn.onclick = openInBrowser;
         playBtn.onclick = playAudio;
-        
-        serverUrlInput.onblur = function() { updateUrlPreview(); };
-        textarea.onblur = function() { updateUrlPreview(); };
-        
         streamCheckbox.onchange = function() { updateUrlPreview(); };
-        
+        if(putAccent) putAccent.onchange = function(){ updateUrlPreview(); };
+        if(putYo) putYo.onchange = function(){ updateUrlPreview(); };
+        if(putStressHomo) putStressHomo.onchange = function(){ updateUrlPreview(); };
+        if(putYoHomo) putYoHomo.onchange = function(){ updateUrlPreview(); };
+        var srRadios = document.querySelectorAll('input[name="sample-rate"]');
+        for(var i=0;i<srRadios.length;i++) srRadios[i].onchange = function(){ updateUrlPreview(); };
         bindExampleRadios();
+        
+        for(var i=0;i<modeRadios.length;i++) modeRadios[i].onclick = function() {
+            currentMode = this.value;
+            toggleMode();
+            updateFinalParams();
+            updateUrlPreview();
+        };
     }
     
     async function init() {
         loadServerUrlFromCookie();
         await loadSpeakersFromServer();
-        speedValue = 0.0;
-        pitchValue = 0.0;
-        updateSpeedUI();
-        updatePitchUI();
+        speedValue = 0.0; pitchValue = 0.0;
+        updateSpeedUI(); updatePitchUI();
         bindEvents();
+        toggleMode();
         updateUrlPreview();
     }
-    
     window.onload = init;
 </script>
 </body>

@@ -1,13 +1,10 @@
 # cpu_monitor.py
 # pav13
 
-import threading
-import time
-import logging
-import os
-import platform
+import threading, time, logging, os, platform
 
 logger = logging.getLogger(__name__)
+
 
 class CPUMonitor:
     def __init__(self, idle_timeout=30.0, monitor_interval=1.0, sample_duration=0.07,

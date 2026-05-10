@@ -5,14 +5,12 @@ import ctypes, logging, os, platform, signal, struct, sys, threading, time
 import numpy as np
 import torch
 from bottle import Bottle, hook, request, response, run
-from functools import lru_cache
-from num2words import num2words
-from urllib.parse import unquote
 
+# ignore warning for torch 2.0.1
 import warnings
 warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
 
-MAIN_VERSION = "0.8.0"
+MAIN_VERSION = "0.8.1"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 NO_CPU_MONITOR = ('--no-cpu-monitor' in sys.argv) or (os.environ.get('NO_CPU_MONITOR', '0').lower() in ('1', 'true'))
@@ -30,19 +28,22 @@ logger = logging.getLogger(__name__)
 if not NO_CPU_MONITOR:
     try:
         from cpu_monitor import CPUMonitor
-        HAS_CPU_MONITOR = True
     except ImportError:
-        HAS_CPU_MONITOR = False
         CPUMonitor = None
-        logger.warning("cpu_monitor.py not found. Speech quality always 'MAX'.")
+        logger.warning("'cpu_monitor.py' not found. Speech quality always 'MAX'.")
 else:
-    HAS_CPU_MONITOR = False
     CPUMonitor = None
     logger.debug("CPU Monitor disabled. Speech quality always 'MAX'.")
 
+try:
+    from text_processor import TextProcessor
+except ImportError:
+    TextProcessor = None
+    logger.warning("'text_processor.py' not found. SSML processing and sentence splitting disabled.")
+
 
 class Config:
-    """Конфигурация приложения"""
+    """конфигурация"""
     if CUDA:
         DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     else:
@@ -52,7 +53,6 @@ class Config:
     HOST, PORT = "127.0.0.1", 23457
     MAX_SAMPLE_RATE = 48000  # 48000, 24000, 8000
     MAX_TEXT_LENGTH = 900
-    PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
     MAX_QUALITY_CONFIG = {"sample_rate": 48000, "put_accent": True,  "put_yo": True,
             "put_stress_homo": True,  "put_yo_homo": True,  "name": "MAX"}
     SPEAKERS = []
@@ -188,261 +188,11 @@ class ModelLoader:
             raise e
 
 
-class TextProcessor:
-    """обработка текста (SSML, числа, транслитерация, разбиение на предложения)"""
-    pause0, pause1, pause2, pause3, pause4, pause5 = 0, 130, 180, 215, 320, 480
-    PUNCT_REPL = {'.': pause4, ',': pause2, '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
-                    ':': pause1, ';': pause3, '—': pause3, '…': pause5}
-    PUNCT_NO_REPL = {'!': pause4, '?': pause4}
-    ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–*")
-    LATIN = frozenset("abcdefghijklmnopqrstuvwxyz&")
-    TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
-        'tch':'ч','sch':'ск','scr':'скр','thr':'тр','squ':'скв','ear':'ир','air':'эр','are':'эр','the':'зэ','and':'энд',
-        'ea':'и','ee':'и','oo':'у','ai':'эй','ay':'эй','ei':'эй','ey':'эй','oi':'ой','oy':'ой','ou':'ау','ow':'ау','au':'о','aw':'о','ie':'и','ui':'у','ue':'ю','uo':'уо','eu':'ю','ew':'ю','oa':'о','oe':'о','sh':'ш','ch':'ч','zh':'ж','th':'з','kh':'х','ts':'ц','ph':'ф','wh':'в','gh':'г','qu':'кв','gu':'г','dg':'дж','ce':'це','ci':'си','cy':'си','ck':'к','ge':'дж','gi':'джи','gy':'джи','er':'эр',
-        'a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'и','z':'з','&':'и'}
-
-    def __init__(self):
-        self.speed_percent = 100
-        self.pitch_level = "medium"
-        self.transl_trie = {}
-        for k, v in self.TRANSLIT_MAP.items():
-            node = self.transl_trie
-            for ch in k:
-                node = node.setdefault(ch, {})
-            node['_'] = v
-
-    def set_ssml_params(self, speed_percent: int, pitch: str):
-        self.speed_percent = max(40, min(300, speed_percent))
-        self.pitch_level = pitch if pitch in Config.PITCH_ORDER else "medium"
-
-    def split_sentences(self, text: str) -> list:
-        sentences = []
-        current_sentence = []
-        end_of_sentence_chars = {'.', '!', '?', '…'}
-        len_text = len(text)
-        
-        for i, ch in enumerate(text):
-            current_sentence.append(ch)
-            if ch in end_of_sentence_chars:
-                if i + 1 == len_text or text[i + 1] == ' ':
-                    sentences.append(''.join(current_sentence).strip())
-                    current_sentence = []
-        
-        if current_sentence:
-            sentences.append(''.join(current_sentence).strip())
-        
-        sentences = [s for s in sentences if s]
-        result = []
-        for sentence in sentences:
-            if len(sentence) <= 200:
-                result.append(sentence)
-                continue
-
-            parts = []
-            current_part = []
-            minor_delim_chars = {',', ';', ':', '—'}
-            
-            for ch in sentence:
-                current_part.append(ch)
-                if ch in minor_delim_chars:
-                    parts.append(''.join(current_part).strip())
-                    current_part = []
-            if current_part:
-                parts.append(''.join(current_part).strip())
-            parts = [p for p in parts if p]
-            current = []
-            cur_len = 0
-            cur_join = " ".join
-
-            for part in parts:
-                if cur_len and cur_len < 60:
-                    current.append(part)
-                    cur_len += len(part) + 1
-                elif current:
-                    result.append(cur_join(current))
-                    current = [part]
-                    cur_len = len(part)
-                else:
-                    current = [part]
-                    cur_len = len(part)
-
-            if current:
-                if result and cur_len < 60:
-                    result[-1] += " " + cur_join(current)
-                else:
-                    result.append(cur_join(current))
-        
-        return result
-
-    def process_sentence(self, text: str, vol_boost: float) -> tuple:
-        len_text = len(text)
-        if len_text > Config.MAX_TEXT_LENGTH:
-            len_text = Config.MAX_TEXT_LENGTH
-            text = text[:len_text]
-            logger.info(f"Text length truncated to {len_text} chars.")
-        
-        text = unquote(text).lower()
-        has_latin = any(ch in self.LATIN for ch in text)
-        vol_boost_mod = vol_boost + 3.5 if text.rstrip().endswith('!') else vol_boost
-        processed_text = self._proc(text, len_text, has_latin)
-        ssml = f'<speak><prosody rate="{self.speed_percent}%" pitch="{self.pitch_level}">{processed_text}</prosody></speak>'
-        
-        return ssml, vol_boost_mod
-
-    def _proc(self, text: str, len_text: int, has_latin: bool) -> str:
-        res, buf, i = [], [], 0
-        PUNCT_REPL, PUNCT_NO_REPL = self.PUNCT_REPL, self.PUNCT_NO_REPL
-        ALLOWED, LATIN = self.ALLOWED, self.LATIN
-        while i < len_text:
-            ch = text[i]
-            if ch.isdigit():
-                i, p = self._num(text, i)
-                buf.append(p)
-                continue
-            if has_latin and ch in LATIN:
-                ni, tr = self._trans(text, i)
-                if tr and tr != ch: buf.append(tr)
-                i = ni
-                continue
-            if ch in PUNCT_REPL:
-                skip = 1
-                if ch == '.' and i + 2 < len_text and text[i+1] == '.' and text[i+2] == '.':
-                    ch = '…'
-                    skip = 3
-                if buf:
-                    s = ''.join(buf).strip()
-                    if s:
-                        res.append(s)
-                res.append(f'<break time="{PUNCT_REPL[ch]}ms"/>')
-                buf.clear()
-                i += skip
-                continue
-            if ch in PUNCT_NO_REPL:
-                if buf:
-                    s = ''.join(buf).strip()
-                    if s:
-                        res.append(self._wrap(s))
-                    res.append(ch) 
-                res.append(f'<break time="{PUNCT_NO_REPL[ch]}ms"/>')
-                buf.clear()
-                i += 1
-                continue
-            if ch.isspace():
-                if not buf or buf[-1] != ' ': buf.append(' ')
-                i += 1
-                continue
-            if ch in ALLOWED:
-                buf.append(ch)
-                i += 1
-                continue
-            if not (buf and buf[-1] == ' '): buf.append(' ')
-            i += 1
-        
-        if buf:
-            s = ''.join(buf).strip()
-            if s: 
-                res.append(s)
-        return ''.join(res).strip()
-    
-    def _trans(self, text: str, pos: int) -> tuple:
-        node, best, best_pos = self.transl_trie, None, pos
-        j = pos
-        n = len(text)
-        while j < n and text[j] in node:
-            node = node[text[j]]; j += 1
-            if '_' in node: best, best_pos = node['_'], j
-        return (best_pos, best) if best else (pos + 1, text[pos] if text[pos] in self.ALLOWED else " ")
-    
-    def _wrap(self, text: str) -> str:
-        last_space = text.rfind(' ')
-        if last_space == -1:
-            return f"*{text}*"
-        
-        return f"{text[:last_space]} *{text[last_space+1:]}*"
-
-    def _num(self, text: str, start: int) -> tuple:
-        i, n = start, len(text)
-        while i < n and text[i].isdigit(): i += 1
-        if i == start: return start + 1, text[start]
-
-        num_str = text[start:i]
-        num_val = int(num_str)
-
-        # Время
-        if i < n and text[i] == ':' and i + 2 < n and text[i+1:i+3].isdigit():
-            mm = int(text[i+1:i+3])
-            end = i + 3
-            res = f"{num_to_words(num_val)} часов {num_to_words(mm)} минут"
-            if end < n and text[end] == ':' and end + 2 < n and text[end+1:end+3].isdigit():
-                res += f" {num_to_words(int(text[end+1:end+3]))} секунд"
-                end += 3
-            return end, res
-
-        # Дата
-        if i < n and text[i] in '.-/' and i + 1 < n and text[i+1].isdigit():
-            j = i + 1
-            while j < n and text[j].isdigit(): j += 1
-            mm = int(text[i+1:j])
-
-            if j < n and text[j] in '.-/' and j + 1 < n and text[j+1].isdigit():
-                l = j + 1
-                while l < n and text[l].isdigit(): l += 1
-                part3 = int(text[j+1:l])
-                months = ["", "января", "февраля", "марта", "апреля", "мая", "июня",
-                          "июля", "августа", "сентября", "октября", "ноября", "декабря"]
-                month_w = months[mm] if 1 <= mm <= 12 else str(mm)
-
-                if (i - start) == 4:
-                    year_w = num_to_words(num_val, to='ordinal', case='g')
-                    day_w = num_to_words(part3, to='ordinal', gender='n')
-                else:
-                    day_w = num_to_words(num_val, to='ordinal', gender='n')
-                    year_w = num_to_words(part3, to='ordinal', case='g')
-
-                return l, f"{day_w} {month_w} {year_w} года"
-
-        # Десятичные дроби
-        if i < n and text[i] in '.,' and i + 1 < n and text[i+1].isdigit():
-            k = i + 1
-            while k < n and text[k].isdigit(): k += 1
-            if num_val == 1 and text[i+1:k] == '5':
-                return k, "полтора"
-            return k, num_to_words(text[start:k].replace(',', '.'))
-
-        # Проценты
-        if i < n and text[i] == '%':
-            return i + 1, f"{num_to_words(num_val)} {self._plur(num_val, ('процент', 'процента', 'процентов'))}"
-
-        # Обычные дроби
-        if i < n and text[i] == '/' and i + 1 < n and text[i+1].isdigit():
-            k = i + 1
-            while k < n and text[k].isdigit(): k += 1
-            return k, f"{num_to_words(num_val)} дробь {num_to_words(int(text[i+1:k]))}"
-
-        # Обычное число
-        return i, num_to_words(num_val)
-
-    @staticmethod
-    def _plur(n: int, forms: tuple) -> str:
-        if n % 100 in (11, 12, 13, 14): return forms[2]
-        if n % 10 == 1: return forms[0]
-        if n % 10 in (2, 3, 4): return forms[1]
-        return forms[2]
-
-
-@lru_cache(maxsize=4096)
-def num_to_words(num, to='cardinal', case='n', gender='m', plural=False, animate=False) -> str:
-    """num: int/str | to: cardinal/ordinal | case: n/g/d/a/i/p (им/род/дат/вин/твор/предл)
-       gender: m/f/n | plural: bool | animate: bool (одуш., только для вин. п.)"""
-    return num2words(num, lang='ru', to=to, case=case, gender=gender, plural=plural, animate=animate)
-
-
 class AudioSynthesizer:
     """генерация звука (синтез речи из SSML)"""
-    def __init__(self, model, device, cpu_monitor):
+    def __init__(self, model, device):
         self.model = model
         self.device = device
-        self.cpu_monitor = cpu_monitor
         self.inference_count = 0
         self.clean_cuda_every = 50 
 
@@ -494,15 +244,17 @@ class AudioSynthesizer:
             num_samples = audio.shape[1] if audio.dim() > 1 else audio.shape[0]
             duration = num_samples / sample_rate
             inference_time = time.time() - t_start
+            logger.debug(f"  Duration: {duration:.2f}s | Time: {inference_time*1000:.0f}ms | RTF: {inference_time/duration:.3f}")
+            
         del audio
         return wav_bytes, duration, inference_time
 
 
 class TTSService:
     """координация"""
-    def __init__(self, model, device, cpu_monitor):
-        self.text_processor = TextProcessor()
-        self.audio_synthesizer = AudioSynthesizer(model, device, cpu_monitor)
+    def __init__(self, model, device, cpu_monitor, text_processor):
+        self.text_processor = text_processor
+        self.audio_synthesizer = AudioSynthesizer(model, device)
         self.cpu_monitor = cpu_monitor
     
     def _resolve_speaker(self, speaker_id: int, text: str = "") -> tuple:
@@ -546,8 +298,18 @@ class TTSService:
     
     def _synthesize_sentence(self, sentence: str, speaker_name: str, 
                              speed: int, pitch: str, vol_boost: float, quality_config: dict) -> tuple:
-        self.text_processor.set_ssml_params(speed, pitch)
-        ssml, vol_boost_mod = self.text_processor.process_sentence(sentence, vol_boost)
+        ssml = None
+        vol_boost_mod = None
+        if self.text_processor is None:
+            if len(sentence) > Config.MAX_TEXT_LENGTH:
+                ssml = sentence[:Config.MAX_TEXT_LENGTH]
+                logger.info(f"Text length truncated to {Config.MAX_TEXT_LENGTH} chars.")
+            else:
+                ssml = sentence
+            vol_boost_mod = vol_boost
+        else:
+            self.text_processor.set_ssml_params(speed, pitch)
+            ssml, vol_boost_mod = self.text_processor.process_sentence(sentence, vol_boost)
         
         sr = min(Config.MAX_SAMPLE_RATE, quality_config["sample_rate"])
         
@@ -563,9 +325,12 @@ class TTSService:
         )
     
     def synthesize_stream(self, text, speaker_id, speed, pitch, vol_boost, r_count):
-        resolved_speaker_id, speaker = self._resolve_speaker(speaker_id, text)
+        _, speaker = self._resolve_speaker(speaker_id, text)
         speaker_name = speaker['name']
-        sentences = self.text_processor.split_sentences(text)
+        if self.text_processor is None:
+            sentences = [text]
+        else:
+            sentences = self.text_processor.split_sentences(text)
         
         if not sentences:
             raise ValueError("No valid sentences found")
@@ -586,16 +351,15 @@ class TTSService:
             for i, sentence in enumerate(sentences):
                 try:
                     if DEBUG:
-                        logger.debug(f">>Processing sentence {i+1}/{len(sentences)}")
+                        logger.debug(f"> Processing sentence {i+1}/{len(sentences)}")
                     
                     quality_config = self._get_quality_config()
                     wav_bytes, duration, inference_time = self._synthesize_sentence(
                         sentence, speaker_name, speed, pitch, vol_boost, quality_config
                     )
-                    if DEBUG and duration > 0:
+                    if DEBUG:
                         total_duration += duration
                         total_time += inference_time
-                        logger.debug(f"  Duration: {duration:.2f}s | Time: {inference_time*1000:.0f}ms | RTF: {inference_time/duration:.3f}")
                     
                     if len(wav_bytes) > 44 and wav_bytes[:4] == b'RIFF':
                         offset = 12
@@ -628,9 +392,12 @@ class TTSService:
         return generate()
     
     def synthesize_once(self, text, speaker_id, speed, pitch, vol_boost, r_count):
-        resolved_speaker_id, speaker = self._resolve_speaker(speaker_id, text)
+        _, speaker = self._resolve_speaker(speaker_id, text)
         speaker_name = speaker['name']
-        sentences = self.text_processor.split_sentences(text)
+        if self.text_processor is None:
+            sentences = [text]
+        else:
+            sentences = self.text_processor.split_sentences(text)
         
         if not sentences:
             raise ValueError("No valid sentences found")
@@ -650,16 +417,14 @@ class TTSService:
             try:
                 if DEBUG:
                     logger.debug(f">>Processing sentence {i+1}/{len(sentences)}")
-                    
                 
                 quality_config = self._get_quality_config()
                 wav_bytes, duration, inference_time = self._synthesize_sentence(
                     sentence, speaker_name, speed, pitch, vol_boost, quality_config
                 )
-                if DEBUG and duration > 0:
+                if DEBUG:
                     total_duration += duration
                     total_time += inference_time
-                    logger.debug(f"  Duration: {duration:.2f}s | Time: {inference_time*1000:.0f}ms | RTF: {inference_time/duration:.3f}")
                 
                 if first_sentence:
                     all_audio_data.extend(wav_bytes)
@@ -695,6 +460,18 @@ class TTSService:
             logger.debug(f"  Speech #{r_count} completed. Total duration: {total_duration:.2f}s | Total time: {total_time*1000:.0f}ms | Avg RTF: {total_time/total_duration:.3f}")
         
         return bytes(all_audio_data)
+    
+    def synthesize_raw(self, r_count, ssml, speaker="aidar", sample_rate=48000,
+                    put_accent=True, put_yo=True, put_stress_homo=True, put_yo_homo=True):
+        logger.info(f"Raw request #{r_count}.")
+        if DEBUG:
+            logger.debug(f"  S:{speaker} S_R:{sample_rate} P_A:{put_accent} P_Y:{put_yo} P_S_H:{put_stress_homo} P_Y_H:{put_yo_homo}")
+            logger.debug(f"  SSML_L:{len(ssml)} SSML:{ssml}")
+        
+        wav_bytes, _, _ = self.audio_synthesizer.synthesize(
+            ssml, speaker, sample_rate, put_accent, put_yo, put_stress_homo, put_yo_homo, 0
+        )
+        return wav_bytes
 
 
 class HTTPServer:
@@ -718,6 +495,7 @@ class HTTPServer:
         @self.app.route('/speakers', method='OPTIONS')
         @self.app.route('/speak', method='OPTIONS')
         @self.app.route('/speak/stream', method='OPTIONS')
+        @self.app.route('/speak/raw', method='OPTIONS')
         @self.app.route('/restart', method='OPTIONS')
         def options_handler():
             response.status = 200
@@ -741,7 +519,6 @@ class HTTPServer:
             if not text: 
                 response.status = 400
                 return {"error": "Text is required"}
-            
             self.r_count += 1
 
             try:
@@ -773,7 +550,6 @@ class HTTPServer:
             if not text: 
                 response.status = 400
                 return {"error": "Text is required"}
-            
             self.r_count += 1
 
             try:
@@ -789,6 +565,49 @@ class HTTPServer:
                 logger.warning(f"Validation error: {ve}")
                 response.status = 400
                 return {"error": str(ve)}
+            except Exception as e:
+                logger.error(f"Synthesis failed: {e}")
+                response.status = 500
+                response.content_type = 'text/plain'
+                return str(e)
+        
+        @self.app.route('/speak/raw', method='GET')
+        def speak_raw():
+            ssml = request.query.text or ""
+            speaker = request.query.speaker or "aidar"
+            sample_rate = int(request.query.sample_rate or 48000)
+            
+            if not ssml:
+                response.status = 400
+                return {"error": "Text is required"}
+            self.r_count += 1
+              
+            def get_bool_param(param_name):
+                value = request.query.get(param_name)
+                if value is None:
+                    return True
+                return value.lower() != 'false'
+            
+            put_accent = get_bool_param('put_accent')
+            put_yo = get_bool_param('put_yo')
+            put_stress_homo = get_bool_param('put_stress_homo')
+            put_yo_homo = get_bool_param('put_yo_homo')
+            
+            try:
+                audio_data = self.tts_service.synthesize_raw(
+                    r_count=self.r_count,
+                    ssml=ssml,
+                    speaker=speaker,
+                    sample_rate=sample_rate,
+                    put_accent=put_accent,
+                    put_yo=put_yo,
+                    put_stress_homo=put_stress_homo,
+                    put_yo_homo=put_yo_homo
+                )
+                response.content_type = 'audio/wav'
+                response.headers['Content-Length'] = str(len(audio_data))
+                return audio_data
+                    
             except Exception as e:
                 logger.error(f"Synthesis failed: {e}")
                 response.status = 500
@@ -818,6 +637,7 @@ class Application:
         self.cpu_monitor = None
         self.tts_service = None
         self.http_server = None
+        self.text_processor = None
         self.running = False
     
     def initialize(self):
@@ -825,9 +645,9 @@ class Application:
         ModelLoader.setup_torch(Config.DEVICE)
         
         self.model = ModelLoader.load_model(Config.MODEL_PATH, Config.DEVICE)
-        if HAS_CPU_MONITOR: self.cpu_monitor = CPUMonitor()
-        else: self.cpu_monitor = None
-        self.tts_service = TTSService(self.model, Config.DEVICE, self.cpu_monitor)
+        self.cpu_monitor = CPUMonitor() if CPUMonitor else None
+        self.text_processor = TextProcessor() if TextProcessor else None
+        self.tts_service = TTSService(self.model, Config.DEVICE, self.cpu_monitor, self.text_processor)
         self.http_server = HTTPServer(self.tts_service, self)
     
     def warmup(self):
@@ -840,14 +660,12 @@ class Application:
 
             for text in texts:
                 with torch.no_grad():
-                    audio = self.model.apply_tts(text=text, speaker=speaker, sample_rate=24000,
+                    audio = self.model.apply_tts(ssml_text=text, speaker=speaker, sample_rate=48000,
                                 put_accent=True, put_yo=True, put_stress_homo=True, put_yo_homo=True)
 
                     if Config.DEVICE.type == 'cuda': torch.cuda.synchronize()
                     else: _ = audio.numpy()
                     del audio
-            for i in range(1000):
-                num_to_words(i)
             logger.info("OK")
         except Exception as e:
             logger.error("FAIL")
@@ -859,15 +677,13 @@ class Application:
         
         self.running = False
         
-        if self.cpu_monitor:
-            self.cpu_monitor.stop()
+        if self.cpu_monitor: self.cpu_monitor.stop()
         
         if self.model:
             try: ModelLoader.unload_model(self.model, Config.DEVICE)
             except: pass
             self.model = None
         
-        num_to_words.cache_clear()
         logger.info("OK")
         threading.Timer(1, os._exit(0)).start()
     
@@ -877,15 +693,13 @@ class Application:
         
         self.running = False
         
-        if self.cpu_monitor:
-            self.cpu_monitor.stop()
+        if self.cpu_monitor: self.cpu_monitor.stop()
         
         if self.model:
             try: ModelLoader.unload_model(self.model, Config.DEVICE)
             except: pass
             self.model = None
         
-        num_to_words.cache_clear()
         time.sleep(1)
         python = sys.executable
         os.execl(python, python, *sys.argv)
