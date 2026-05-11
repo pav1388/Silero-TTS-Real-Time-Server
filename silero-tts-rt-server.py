@@ -10,7 +10,7 @@ from bottle import Bottle, hook, request, response, run
 import warnings
 warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
 
-MAIN_VERSION = "0.8.1"
+MAIN_VERSION = "0.8.2"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 NO_CPU_MONITOR = ('--no-cpu-monitor' in sys.argv) or (os.environ.get('NO_CPU_MONITOR', '0').lower() in ('1', 'true'))
@@ -39,7 +39,7 @@ try:
     from text_processor import TextProcessor
 except ImportError:
     TextProcessor = None
-    logger.warning("'text_processor.py' not found. SSML processing and sentence splitting disabled.")
+    logger.warning("'text_processor.py' not found. Num to words, SSML processing and sentence splitting disabled.")
 
 
 class Config:
@@ -303,7 +303,7 @@ class TTSService:
         if self.text_processor is None:
             if len(sentence) > Config.MAX_TEXT_LENGTH:
                 ssml = sentence[:Config.MAX_TEXT_LENGTH]
-                logger.info(f"Text length truncated to {Config.MAX_TEXT_LENGTH} chars.")
+                logger.warning(f"Text length truncated to {Config.MAX_TEXT_LENGTH} chars.")
             else:
                 ssml = sentence
             vol_boost_mod = vol_boost

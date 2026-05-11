@@ -15,9 +15,9 @@ class TextProcessor:
     PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
     pause0, pause1, pause2, pause3, pause4, pause5 = 0, 120, 180, 215, 320, 480
     # pause0, pause1, pause2, pause3, pause4, pause5 = 0, 80, 100, 130, 200, 320
-    PUNCT_REPL = {'.': pause4, ',': pause2, '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
+    PUNCT = {'.': pause4, '?': pause4, '!': pause4}
+    PUNCT_REPL = {',': pause2, '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
                     ':': pause1, ';': pause3, '—': pause3, '…': pause5}
-    PUNCT_NO_REPL = {'!': pause4, '?': pause4}
     ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–*")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz&")
     TRANSLIT_MAP = {'ough':'о','augh':'о','eigh':'эй','igh':'ай','tion':'шн','shch':'щ','ture': 'чер','sion': 'жн',
@@ -103,7 +103,7 @@ class TextProcessor:
         if len_text > self.MAX_TEXT_LENGTH:
             len_text = self.MAX_TEXT_LENGTH
             text = text[:len_text]
-            logger.info(f"Text length truncated to {len_text} chars.")
+            logger.warning(f"Text length truncated to {len_text} chars.")
         
         text = unquote(text).lower()
         has_latin = any(ch in self.LATIN for ch in text)
@@ -115,57 +115,125 @@ class TextProcessor:
 
     def _proc(self, text: str, len_text: int, has_latin: bool) -> str:
         res, buf, i = [], [], 0
-        PUNCT_REPL, PUNCT_NO_REPL = self.PUNCT_REPL, self.PUNCT_NO_REPL
+        PUNCT_REPL, PUNCT = self.PUNCT_REPL, self.PUNCT
         ALLOWED, LATIN = self.ALLOWED, self.LATIN
+        
+        def flush_buf(with_question_mark=False):
+            if not buf:
+                return None
+            s = ''.join(buf).strip()
+            if not s:
+                return None
+            if with_question_mark:
+                last_space = s.rfind(' ')
+                if last_space == -1:
+                    return f"*{s}*"
+                return f"{s[:last_space]} *{s[last_space+1:]}*"
+            return s
+        
+        def add_break(ch, is_punct_repl=False):
+            time = PUNCT_REPL[ch] if is_punct_repl else PUNCT.get(ch, 0)
+            res.append(f'<break time="{time}ms"/>')
+        
         while i < len_text:
             ch = text[i]
+            
+            # Цифры
             if ch.isdigit():
                 i, p = self._num(text, i)
                 buf.append(p)
                 continue
+            
+            # Транслитерация
             if has_latin and ch in LATIN:
                 ni, tr = self._trans(text, i)
-                if tr and tr != ch: buf.append(tr)
+                if tr and tr != ch:
+                    buf.append(tr)
                 i = ni
                 continue
+            
+            # Многоточие
+            if ch == '.' and i + 2 < len_text and text[i+1] == '.' and text[i+2] == '.':
+                if (s := flush_buf()):
+                    res.append(s)
+                add_break('…', True)
+                i += 3
+                continue
+            
+            # Точка
+            if ch == '.':
+                if (s := flush_buf()):
+                    res.append(s)
+                add_break(ch)
+                buf.clear()
+                i += 1
+                continue
+            
+            # Знаки с заменой
             if ch in PUNCT_REPL:
-                skip = 1
-                if ch == '.' and i + 2 < len_text and text[i+1] == '.' and text[i+2] == '.':
-                    ch = '…'
-                    skip = 3
-                if buf:
-                    s = ''.join(buf).strip()
-                    if s:
+                if (s := flush_buf()):
+                    res.append(s)
+                add_break(ch, True)
+                buf.clear()
+                i += 1
+                continue
+            
+            # Вопросительный знак
+            if ch == '?':
+                if (s := flush_buf(True)):
+                    res.append(s)
+                    res.append(ch)
+                add_break(ch)
+                buf.clear()
+                i += 1
+                continue
+            
+            # Восклицательный знак
+            if ch == '!':
+                if (s := flush_buf()):
+                    res.append(s)
+                    res.append(ch)
+                add_break(ch)
+                buf.clear()
+                i += 1
+                continue
+            
+            # Дефис/тире
+            if ch == '-':
+                if i > 0 and text[i-1] == ' ' and i + 1 < len_text and text[i+1] == ' ':
+                    if (s := flush_buf()):
                         res.append(s)
-                res.append(f'<break time="{PUNCT_REPL[ch]}ms"/>')
-                buf.clear()
-                i += skip
-                continue
-            if ch in PUNCT_NO_REPL:
-                if buf:
-                    s = ''.join(buf).strip()
-                    if s:
-                        res.append(self._wrap(s))
-                    res.append(ch) 
-                res.append(f'<break time="{PUNCT_NO_REPL[ch]}ms"/>')
-                buf.clear()
+                    add_break('—', True)
+                    buf.clear()
+                    i += 2
+                    continue
+                
+                buf.append(' ')
                 i += 1
                 continue
+            
+            # Пробелы
             if ch.isspace():
-                if not buf or buf[-1] != ' ': buf.append(' ')
+                if not buf or buf[-1] != ' ':
+                    buf.append(' ')
                 i += 1
                 continue
+            
+            # Разрешённые символы
             if ch in ALLOWED:
                 buf.append(ch)
                 i += 1
                 continue
-            if not (buf and buf[-1] == ' '): buf.append(' ')
+            
+            # Прочие символы заменяем пробелом
+            if not (buf and buf[-1] == ' '):
+                buf.append(' ')
             i += 1
         
-        if buf:
-            s = ''.join(buf).strip()
-            if s: 
-                res.append(s)
+        # Финальная очистка
+        if buf and (s := ''.join(buf).strip()):
+            res.append(s)
+        
         return ''.join(res).strip()
     
     def _trans(self, text: str, pos: int) -> tuple:
