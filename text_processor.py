@@ -13,9 +13,10 @@ class TextProcessor:
     """обработка текста (разбиение на предложения, SSML, числа, транслитерация)"""
     MAX_TEXT_LENGTH = 900
     PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
-    pause0, pause1, pause2, pause3, pause4, pause5 = 0, 130, 180, 215, 320, 480
+    pause0, pause1, pause2, pause3, pause4, pause5 = 0, 120, 180, 215, 320, 480
+    # pause0, pause1, pause2, pause3, pause4, pause5 = 0, 80, 100, 130, 200, 320
     PUNCT_REPL = {'.': pause4, ',': pause2, '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
-                    ':': pause1, ';': pause3, '-': pause2, '—': pause3, '…': pause5}
+                    ':': pause1, ';': pause3, '—': pause3, '…': pause5}
     PUNCT_NO_REPL = {'!': pause4, '?': pause4}
     ALLOWED = frozenset("_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–*")
     LATIN = frozenset("abcdefghijklmnopqrstuvwxyz&")
@@ -47,7 +48,7 @@ class TextProcessor:
         for i, ch in enumerate(text):
             current_sentence.append(ch)
             if ch in end_of_sentence_chars:
-                if i + 1 == len_text or text[i + 1] == ' ':
+                if i + 1 == len_text or text[i + 1] == ' ' or text[i + 1] == '\n':
                     sentences.append(''.join(current_sentence).strip())
                     current_sentence = []
         
