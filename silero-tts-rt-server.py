@@ -10,7 +10,7 @@ from bottle import Bottle, hook, request, response, run
 import warnings
 warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
 
-MAIN_VERSION = "0.8.2"
+MAIN_VERSION = "0.8.3"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 NO_CPU_MONITOR = ('--no-cpu-monitor' in sys.argv) or (os.environ.get('NO_CPU_MONITOR', '0').lower() in ('1', 'true'))
