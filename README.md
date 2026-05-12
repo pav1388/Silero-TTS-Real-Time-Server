@@ -301,7 +301,7 @@ http://127.0.0.1:23457/restart
 - **HIllya51:** За LunaTranslator [GitHub](https://github.com/HIllya51/LunaTranslator)
 - **Silero:** За доступные модели [GitHub](https://github.com/snakers4/silero-models), [Silero.ai](https://silero.ai/)
 - **Штакет:** За идею и исходные материалы [YouTube](https://www.youtube.com/watch?v=r7eI_gON3X0)
-- **Виктор Шацков:** За идею адаптации голосов [YouTube](https://www.youtube.com/watch?v=JGq7Xxvr5oI)
+- **Виктор Шацков:** За идею адаптации голосов [YouTube](https://www.youtube.com/watch?v=30lrGfPt4IA)
 
 ## Разное
 

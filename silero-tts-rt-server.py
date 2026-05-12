@@ -308,8 +308,7 @@ class TTSService:
                 ssml = sentence
             vol_boost_mod = vol_boost
         else:
-            self.text_processor.set_ssml_params(speed, pitch)
-            ssml, vol_boost_mod = self.text_processor.process_sentence(sentence, vol_boost)
+            ssml, vol_boost_mod = self.text_processor.process_sentence(sentence, speed, pitch, vol_boost)
         
         sr = min(Config.MAX_SAMPLE_RATE, quality_config["sample_rate"])
         

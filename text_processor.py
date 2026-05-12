@@ -8,13 +8,21 @@ from num2words import num2words
 
 logger = logging.getLogger(__name__)
 
+@lru_cache(maxsize=2048)   
+def num_to_words(num, to='cardinal', case='n', gender='m', plural=False, animate=False) -> str:
+    """num: int/str | to: cardinal/ordinal | case: n/g/d/a/i/p (им/род/дат/вин/твор/предл)
+       gender: m/f/n | plural: bool | animate: bool (одуш., только для вин. п.)"""
+    try:
+        return num2words(num, lang='ru', to=to, case=case, gender=gender, plural=plural, animate=animate)
+    except Exception:
+        return " ".join(str(num))
+
 
 class TextProcessor:
     """обработка текста (разбиение на предложения, SSML, числа, транслитерация)"""
     MAX_TEXT_LENGTH = 900
     PITCH_ORDER = ["x-low", "low", "medium", "high", "x-high"]
     pause0, pause1, pause2, pause3, pause4, pause5 = 0, 120, 180, 215, 320, 480
-    # pause0, pause1, pause2, pause3, pause4, pause5 = 0, 80, 100, 130, 200, 320
     PUNCT = {'.': pause4, '?': pause4, '!': pause4}
     PUNCT_REPL = {',': pause2, '(': pause2, ')': pause2, '[': pause2, ']': pause2, 
                     ':': pause1, ';': pause3, '—': pause3, '…': pause5}
@@ -26,8 +34,6 @@ class TextProcessor:
         'a':'а','b':'б','c':'к','d':'д','e':'е','f':'ф','g':'г','h':'х','i':'и','j':'дж','k':'к','l':'л','m':'м','n':'н','o':'о','p':'п','q':'к','r':'р','s':'с','t':'т','u':'у','v':'в','w':'в','x':'кс','y':'и','z':'з','&':'и'}
 
     def __init__(self):
-        self.speed_percent = 100
-        self.pitch_level = "medium"
         self.transl_trie = {}
         for k, v in self.TRANSLIT_MAP.items():
             node = self.transl_trie
@@ -35,10 +41,6 @@ class TextProcessor:
                 node = node.setdefault(ch, {})
             node['_'] = v
     
-    def set_ssml_params(self, speed_percent: int, pitch: str):
-        self.speed_percent = max(40, min(300, speed_percent))
-        self.pitch_level = pitch if pitch in self.PITCH_ORDER else "medium"
-
     def split_sentences(self, text: str) -> list:
         sentences = []
         current_sentence = []
@@ -98,7 +100,9 @@ class TextProcessor:
         
         return result
 
-    def process_sentence(self, text: str, vol_boost: float) -> tuple:
+    def process_sentence(self, text: str, speed: int, pitch: str, vol_boost: float) -> tuple:
+        speed_percent = max(40, min(300, speed))
+        pitch_level = pitch if pitch in self.PITCH_ORDER else "medium"
         len_text = len(text)
         if len_text > self.MAX_TEXT_LENGTH:
             len_text = self.MAX_TEXT_LENGTH
@@ -107,9 +111,9 @@ class TextProcessor:
         
         text = unquote(text).lower()
         has_latin = any(ch in self.LATIN for ch in text)
-        vol_boost_mod = vol_boost + 3.5 if text.rstrip().endswith('!') else vol_boost
+        vol_boost_mod = vol_boost + 3.2 if text.rstrip().endswith('!') else vol_boost
         processed_text = self._proc(text, len_text, has_latin)
-        ssml = f'<speak><prosody rate="{self.speed_percent}%" pitch="{self.pitch_level}">{processed_text}</prosody></speak>'
+        ssml = f'<speak><prosody rate="{speed_percent}%" pitch="{pitch_level}">{processed_text}</prosody></speak>'
         
         return ssml, vol_boost_mod
 
@@ -157,6 +161,7 @@ class TextProcessor:
                 if (s := flush_buf()):
                     res.append(s)
                 add_break('…', True)
+                buf.clear()
                 i += 3
                 continue
             
@@ -264,9 +269,9 @@ class TextProcessor:
         if i < n and text[i] == ':' and i + 2 < n and text[i+1:i+3].isdigit():
             mm = int(text[i+1:i+3])
             end = i + 3
-            res = f"{self._num_to_words(num_val)} часов {self._num_to_words(mm)} минут"
+            res = f"{num_to_words(num_val)} часов {num_to_words(mm)} минут"
             if end < n and text[end] == ':' and end + 2 < n and text[end+1:end+3].isdigit():
-                res += f" {self._num_to_words(int(text[end+1:end+3]))} секунд"
+                res += f" {num_to_words(int(text[end+1:end+3]))} секунд"
                 end += 3
             return end, res
 
@@ -285,11 +290,11 @@ class TextProcessor:
                 month_w = months[mm] if 1 <= mm <= 12 else str(mm)
 
                 if (i - start) == 4:
-                    year_w = self._num_to_words(num_val, to='ordinal', case='g')
-                    day_w = self._num_to_words(part3, to='ordinal', gender='n')
+                    year_w = num_to_words(num_val, to='ordinal', case='g')
+                    day_w = num_to_words(part3, to='ordinal', gender='n')
                 else:
-                    day_w = self._num_to_words(num_val, to='ordinal', gender='n')
-                    year_w = self._num_to_words(part3, to='ordinal', case='g')
+                    day_w = num_to_words(num_val, to='ordinal', gender='n')
+                    year_w = num_to_words(part3, to='ordinal', case='g')
 
                 return l, f"{day_w} {month_w} {year_w} года"
 
@@ -299,20 +304,20 @@ class TextProcessor:
             while k < n and text[k].isdigit(): k += 1
             if num_val == 1 and text[i+1:k] == '5':
                 return k, "полтора"
-            return k, self._num_to_words(text[start:k].replace(',', '.'))
+            return k, num_to_words(text[start:k].replace(',', '.'))
 
         # Проценты
         if i < n and text[i] == '%':
-            return i + 1, f"{self._num_to_words(num_val)} {self._plur(num_val, ('процент', 'процента', 'процентов'))}"
+            return i + 1, f"{num_to_words(num_val)} {self._plur(num_val, ('процент', 'процента', 'процентов'))}"
 
         # Обычные дроби
         if i < n and text[i] == '/' and i + 1 < n and text[i+1].isdigit():
             k = i + 1
             while k < n and text[k].isdigit(): k += 1
-            return k, f"{self._num_to_words(num_val)} дробь {self._num_to_words(int(text[i+1:k]))}"
+            return k, f"{num_to_words(num_val)} дробь {num_to_words(int(text[i+1:k]))}"
 
         # Обычное число
-        return i, self._num_to_words(num_val)
+        return i, num_to_words(num_val)
 
     @staticmethod
     def _plur(n: int, forms: tuple) -> str:
@@ -320,8 +325,3 @@ class TextProcessor:
         if n % 10 == 1: return forms[0]
         if n % 10 in (2, 3, 4): return forms[1]
         return forms[2]
-    
-    def _num_to_words(self, num, to='cardinal', case='n', gender='m', plural=False, animate=False) -> str:
-        """num: int/str | to: cardinal/ordinal | case: n/g/d/a/i/p (им/род/дат/вин/твор/предл)
-           gender: m/f/n | plural: bool | animate: bool (одуш., только для вин. п.)"""
-        return num2words(num, lang='ru', to=to, case=case, gender=gender, plural=plural, animate=animate)
