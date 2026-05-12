@@ -43,7 +43,6 @@ echo   Version: %VERSION%
 echo ============================================
 echo.
 
-goto CREATE_ARCHIVE
 :: ================= DEPENDENCIES =================
 echo [1/7] Python dependencies...
 
@@ -119,7 +118,6 @@ echo pause ^>nul
 echo        [OK]
 
 :: ================= CREATE ARCHIVE =================
-:CREATE_ARCHIVE
 echo.
 echo [7/7] Creating archive...
 
