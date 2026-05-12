@@ -2,139 +2,105 @@
 title Silero TTS RT Server - Build Script
 setlocal enabledelayedexpansion
 
-:: ============================================
-:: CONFIGURATION
-:: ============================================
-set PROGRAMFILE=silero-tts-rt-server.py
-set FOLDERNAME=silero-tts-rt-server
-set PYTHON_EXE="C:\Python38-64\python.exe"
-set PATH_7ZIP="C:\TCPU75\Programm\SFX Tool\7zG.exe"
-set FALLBACK_7ZIP="C:\Program Files (x86)\7-Zip\7z.exe"
-set COMPRESSION_LEVEL=9
-set COMPRESSION_METHOD=lzma2:fb=273:d=1024m
-:: ============================================
+:: ================= CONFIG =================
+set "PROGRAMFILE=silero-tts-rt-server.py"
+set "FOLDERNAME=silero-tts-rt-server"
+set "PYTHON_EXE=C:\Python38-64\python.exe"
+set "SEVENZIP_EXE=C:\TCPU75\Programm\SFX Tool\7z.exe"
+set "FALLBACK_7ZIP=C:\Program Files (x86)\7-Zip\7z.exe"
+set "PRE_ARCHIVE_NAME=pre-archive.7z"
+set "PRE_ARCHIVE_PATH=scripts\%PRE_ARCHIVE_NAME%"
+:: =========================================
+
+:: TIMER START
+for /f "tokens=1-3 delims=:." %%a in ("%TIME%") do (
+    set /a START_H=1%%a-100
+    set /a START_M=1%%b-100
+    set /a START_S=1%%c-100
+)
+set /a START_TIME=START_H*3600 + START_M*60 + START_S
 
 :: Go to parent directory
 cd .. 2>nul
 
-:: Detect version
+:: VERSION DETECT
 set VERSION=
 for /f "tokens=2 delims=^= " %%a in ('findstr "MAIN_VERSION" %PROGRAMFILE% 2^>nul') do (
     if not defined VERSION (
-        set VERSION=%%a
-        set VERSION=!VERSION:"=!
+        set "VERSION=%%a"
+        set "VERSION=!VERSION:"=!"
     )
 )
 if not defined VERSION set VERSION=0.0.0
-set RELEASE_DIR=%FOLDERNAME%-%VERSION%-win7x64
+
+set "RELEASE_NAME=%FOLDERNAME%-%VERSION%-win7x64"
 
 echo.
-echo +--------------------------------------------------------------------+
-echo ^|              SILERO TTS RT SERVER - RELEASE BUILDER                ^|
-echo +--------------------------------------------------------------------+
-echo ^|  Project: %FOLDERNAME%
-echo ^|  Version: v%VERSION%
-echo +--------------------------------------------------------------------+
+echo ============================================
+echo     SILERO TTS RT SERVER - BUILD SCRIPT
+echo ============================================
+echo   Version: %VERSION%
+echo ============================================
 echo.
 
-:: ============================================
-:: CHECK AND INSTALL DEPENDENCIES
-:: ============================================
-echo [1/8] Checking Python dependencies...
-echo.
+goto CREATE_ARCHIVE
+:: ================= DEPENDENCIES =================
+echo [1/7] Python dependencies...
 
-set PACKAGES_FAILED=0
-set PACKAGES_INSTALLED=0
-set PACKAGES_SKIPPED=0
-
-call :InstallPackage "bottle" "bottle" "" "--no-deps"
-call :InstallPackage "num2words" "num2words" "" "--no-deps"
-call :InstallPackage "typing_extensions" "typing-extensions" "4.5.0" "--no-deps"
-call :InstallPackage "mpmath" "mpmath" "1.3.0" "--no-deps"
-call :InstallPackage "sympy" "sympy" "1.12" "--no-deps"
-call :InstallPackage "numpy" "numpy" "1.24.3" "--no-deps --only-binary :all:"
-call :InstallPackage "torch" "torch" "2.0.1" "--no-deps --only-binary :all: --index-url https://download.pytorch.org/whl/cpu"
-call :InstallPackage "PyInstaller" "pyinstaller" "" ""
+call :pip_install bottle
+call :pip_install num2words
+call :pip_install typing-extensions 4.5.0
+call :pip_install mpmath 1.3.0
+call :pip_install sympy 1.12
+call :pip_install numpy 1.24.3 --no-deps --only-binary :all:
+call :pip_install torch 2.0.1 --no-deps --only-binary :all: --index-url https://download.pytorch.org/whl/cpu
+call :pip_install pyinstaller
 
 echo.
-if %PACKAGES_FAILED% equ 1 (
-    echo        [WARNING] %PACKAGES_FAILED% package^(s^) failed to install
-    pause
-) else (
-    echo        [OK] Dependencies ready ^(%PACKAGES_INSTALLED% installed, %PACKAGES_SKIPPED% cached^)
-)
-echo.
-goto :AfterPackages
 
-:InstallPackage
-setlocal
-set "IMPORT_NAME=%~1"
-set "PKG_NAME=%~2"
-set "VERSION=%~3"
-set "FLAGS=%~4"
-
-%PYTHON_EXE% -c "import %IMPORT_NAME%" >nul 2>&1
-if %errorlevel% equ 0 (
-    endlocal & set /a PACKAGES_SKIPPED+=1
-    exit /b 0
-)
-
-set "INSTALL_CMD=%PYTHON_EXE% -m pip install --no-cache-dir"
-if not "%VERSION%"=="" ( set "INSTALL_CMD=%INSTALL_CMD% %PKG_NAME%==%VERSION%" ) else ( set "INSTALL_CMD=%INSTALL_CMD% %PKG_NAME%" )
-if not "%FLAGS%"=="" set "INSTALL_CMD=%INSTALL_CMD% %FLAGS%"
-
-%INSTALL_CMD% >nul 2>&1
-
-if %errorlevel% neq 0 (
-    endlocal & set /a PACKAGES_FAILED+=1
-    exit /b 1
-) else (
-    endlocal & set /a PACKAGES_INSTALLED+=1
-    exit /b 0
-)
-
-:AfterPackages
-
-:: Clean old files
-echo [2/8] Cleaning old files...
+:: ================= CLEAN =================
+echo [2/7] Cleaning...
 rmdir /s /q build dist __pycache__ 2>nul
 del /s /q *.pyc *.spec *.manifest 2>nul
-rmdir /s /q "releases\%RELEASE_DIR%" 2>nul
+rmdir /s /q "releases\%FOLDERNAME%" 2>nul
 echo        [OK]
-echo.
 
-:: PyInstaller build
-echo [3/8] Building with PyInstaller...
+:: ================= BUILD =================
+echo [3/7] PyInstaller build...
+
 %PYTHON_EXE% -m PyInstaller --onedir --noupx --icon=scripts\icon.ico %PROGRAMFILE%
 
-if %errorlevel% neq 0 (
-    echo        [ERROR] Build failed!
+if not errorlevel 0 (
+    echo BUILD FAILED
     pause
     exit /b 1
 )
 echo        [OK]
-echo.
 
-:: Copy files
-echo [4/8] Copying files...
-xcopy "models\v5_5_ru.pt" "dist\%FOLDERNAME%\models\" /I /Y >nul 2>&1
-xcopy "README.md" "dist\%FOLDERNAME%\" /Y >nul 2>&1
-xcopy "tts-rt-simple-client.html" "dist\%FOLDERNAME%\" /Y >nul 2>&1
-xcopy "LunaTranslator\*" "dist\%FOLDERNAME%\LunaTranslator\" /E /I /Y >nul 2>&1
-echo        [OK]
-echo.
+:: ================= RELEASE =================
+echo [4/7] Creating release...
 
-:: Rename and move
-echo [5/8] Creating release folder...
-rename dist\%FOLDERNAME% "%RELEASE_DIR%" 2>nul
 if not exist releases mkdir releases
-move "dist\%RELEASE_DIR%" "releases\%RELEASE_DIR%" >nul 2>&1
-echo        [OK] releases\%RELEASE_DIR%
-echo.
+move "dist\%FOLDERNAME%" "releases\%FOLDERNAME%" >nul 2>&1
+rmdir /s /q build dist __pycache__ 2>nul
+del /s /q *.pyc *.spec *.manifest 2>nul
 
-:: Create debug script
-echo [6/8] Creating bat scripts...
-set RUN_DIR=releases\%RELEASE_DIR%
+echo        [OK]
+
+:: ================= COPY FILES =================
+echo [5/7] Copy files...
+
+xcopy "models\v5_5_ru.pt" "releases\%FOLDERNAME%\models\" /I /Y >nul 2>&1
+xcopy "README.md" "releases\%FOLDERNAME%\" /Y >nul 2>&1
+xcopy "tts-rt-simple-client.html" "releases\%FOLDERNAME%\" /Y >nul 2>&1
+xcopy "LunaTranslator\*" "releases\%FOLDERNAME%\LunaTranslator\" /E /I /Y >nul 2>&1
+
+echo        [OK]
+
+:: ================= CREATE SCRIPTS =================
+echo [6/7] Create bat scripts...
+
+set RUN_DIR=releases\%FOLDERNAME%
 (
 echo @echo off
 echo title %FOLDERNAME% v%VERSION% Debug mode
@@ -149,54 +115,115 @@ echo %FOLDERNAME%.exe --no-cpu-monitor
 echo echo.
 echo pause ^>nul
 ) > "%RUN_DIR%\_run_with_no-cpu-monitor.bat"
+
 echo        [OK]
-echo.
 
-:: Calculate folder size
-echo [7/8] Calculating folder size...
-set "FOLDER_PATH=releases\%RELEASE_DIR%"
-set FOLDER_SIZE_BYTES=0
-for /f "usebackq delims=" %%a in (`powershell -Command "& { (Get-ChildItem -Path '%FOLDER_PATH%' -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum }"`) do set FOLDER_SIZE_BYTES=%%a
-if not defined FOLDER_SIZE_BYTES set FOLDER_SIZE_BYTES=0
-set /a FOLDER_SIZE_MB=%FOLDER_SIZE_BYTES% / 1048576
-echo        [OK] %FOLDER_SIZE_MB% MB
+:: ================= CREATE ARCHIVE =================
+:CREATE_ARCHIVE
 echo.
+echo [7/7] Creating archive...
 
-:: Create archive
-echo [8/8] Creating archive...
-if not exist %PATH_7ZIP% if exist %FALLBACK_7ZIP% set PATH_7ZIP=%FALLBACK_7ZIP%
-if not exist %PATH_7ZIP% (
-    echo        [SKIP] 7-Zip not found
-    goto :skip_archive
+if not exist "%SEVENZIP_EXE%" if exist "%FALLBACK_7ZIP%" set "SEVENZIP_EXE=%FALLBACK_7ZIP%"
+
+if not exist "%SEVENZIP_EXE%" (
+    echo 7-Zip not found, skipping archive
+    goto :finish
 )
 
+:: PRE ARCHIVE MODE
+if exist "%PRE_ARCHIVE_PATH%" (
+    echo Using pre-archive mode...
+
+    copy "%PRE_ARCHIVE_PATH%" "releases\%PRE_ARCHIVE_NAME%" >nul 2>&1
+    pushd releases >nul
+    echo Generating file list from %PRE_ARCHIVE_NAME%...
+    del archive_files_raw.txt 2>nul
+    del excludes.txt 2>nul
+    "%SEVENZIP_EXE%" l -ba "%PRE_ARCHIVE_NAME%" > archive_files_raw.txt
+    > "excludes.txt" (
+        for /f "tokens=5,6*" %%a in (archive_files_raw.txt) do (
+            set "size=%%a"
+            set "size=!size:,=!"
+            if not "!size!"=="0" (
+                if not "!size!"=="" (
+                    echo %%b
+                )
+            )
+        )
+    )
+    del archive_files_raw.txt 2>nul
+    
+    :: Подсчитываем количество исключаемых файлов
+    for /f %%c in ('type "excludes.txt" 2^>nul ^| find /c /v ""') do set "COUNT=%%c"
+    echo Excluding !COUNT! files from update.
+    
+    "%SEVENZIP_EXE%" u "%PRE_ARCHIVE_NAME%" "%FOLDERNAME%" ^
+        -t7z -ms=off -ssw -bsp1 -mx=9 -myx=9 -mmt=on -m0=lzma2:fb=273:d=1024m ^
+        -x@excludes.txt 2>nul
+    
+    del excludes.txt 2>nul
+    rename "%PRE_ARCHIVE_NAME%" "%RELEASE_NAME%.7z" >nul 2>&1
+
+    popd
+    goto :archive_done
+)
+
+:: FULL ARCHIVE MODE
+echo Using full archive mode...
 pushd releases >nul
-%PATH_7ZIP% a -t7z -ssw -mqs -mx=%COMPRESSION_LEVEL% -myx=%COMPRESSION_LEVEL% -mmt=on -m0=%COMPRESSION_METHOD% -scsWIN "%RELEASE_DIR%.7z" "%RELEASE_DIR%" >nul 2>&1
+
+"%SEVENZIP_EXE%" a "%FOLDERNAME%.7z" "%FOLDERNAME%" ^
+    -t7z -ms=off -ssw -bsp1 -mx=9 -myx=9 -mmt=on -m0=lzma2:fb=273:d=1024m 2>nul
+
+rename "%FOLDERNAME%.7z" "%RELEASE_NAME%.7z" >nul 2>&1
+
 popd
 
-if exist "releases\%RELEASE_DIR%.7z" (
-    for %%I in ("releases\%RELEASE_DIR%.7z") do set ARCHIVE_SIZE=%%~zI
-    set /a ARCHIVE_MB=!ARCHIVE_SIZE!/1048576
-    echo        [OK] !ARCHIVE_MB! MB
-) else (
-    echo        [ERROR] Archive creation failed
+:archive_done
+
+:: ================= TIMER END =================
+:finish
+
+for /f "tokens=1-3 delims=:." %%a in ("%TIME%") do (
+    set /a END_H=1%%a-100
+    set /a END_M=1%%b-100
+    set /a END_S=1%%c-100
 )
-:skip_archive
+
+set /a END_TIME=END_H*3600 + END_M*60 + END_S
+set /a ELAPSED=END_TIME-START_TIME
+if !ELAPSED! lss 0 set /a ELAPSED+=86400
+
+set /a MIN=ELAPSED/60
+set /a SEC=ELAPSED%%60
+
+echo.
+echo ============================================
+echo BUILD COMPLETE
+echo ============================================
+echo Release: releases\%FOLDERNAME%
+if exist "releases\%RELEASE_NAME%.7z" echo Archive: releases\%RELEASE_NAME%.7z
+echo Time: !MIN!m !SEC!s
+echo ============================================
 echo.
 
-:: Final cleanup
-echo [*] Final cleanup...
-rmdir /s /q build __pycache__ dist 2>nul
-del /s /q *.pyc *.spec *.manifest 2>nul
-echo        [OK]
-echo.
-
-:: Final output
-echo +--------------------------------------------------------------------+
-echo ^|   [SUCCESS] BUILD COMPLETED                                        ^|
-echo +--------------------------------------------------------------------+
-echo ^|   Release: releases\%RELEASE_DIR% (%FOLDER_SIZE_MB% MB^)
-if exist "releases\%RELEASE_DIR%.7z" echo ^|   Archive: releases\%RELEASE_DIR%.7z (!ARCHIVE_MB! MB^)
-echo +--------------------------------------------------------------------+
-echo.
 pause
+exit /b
+
+
+:: ================= FUNCTIONS =================
+:pip_install
+set "PKG=%~1"
+set "VER=%~2"
+
+if "%VER%"=="" (
+    "%PYTHON_EXE%" -c "import %PKG%" >nul 2>&1
+    if not errorlevel 1 exit /b
+    "%PYTHON_EXE%" -m pip install %PKG%
+) else (
+    "%PYTHON_EXE%" -c "import %PKG%" >nul 2>&1
+    if not errorlevel 1 exit /b
+    "%PYTHON_EXE%" -m pip install %PKG%==%VER% %3 %4 %5 %6
+)
+
+exit /b

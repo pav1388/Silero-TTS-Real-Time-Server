@@ -1,3 +1,4 @@
+scripts/pre-archive.7z
 models/*.pt
 releases/
 backup/
