@@ -59,7 +59,7 @@ class Config:
     REAL_SPEAKERS_COUNT = 0
     SPEAKERS_INFO = {"aidar": {"gender": "male"}, "baya": {"gender": "female"},
         "kseniya": {"gender": "female"}, "eugene": {"gender": "male"}, "xenia": {"gender": "female"}}
-    
+
 
 class ModelLoader:
     """загрузка модели и инициализация torch"""
@@ -219,7 +219,8 @@ class AudioSynthesizer:
                 audio = self.model.apply_tts(
                     ssml_text=ssml, speaker=speaker_name, sample_rate=sample_rate, 
                     put_accent=put_accent, put_yo=put_yo,
-                    put_stress_homo=put_stress_homo, put_yo_homo=put_yo_homo, intensity=3)
+                    put_stress_homo=put_stress_homo, put_yo_homo=put_yo_homo,
+                    stress_single_vowel = True, intensity=3)
             
                 if self.device.type == 'cuda':
                     self.inference_count += 1
@@ -742,14 +743,30 @@ class Application:
             print(f"#  {line:<{max_len}}  #")
         print('#' * (width + 2))
         print("")
-        print("READY")
         self.running = True
+        print("READY")
+        set_console_title("READY")
         
         try: self.http_server.run(Config.HOST, Config.PORT)
         except Exception as e: logger.error(f"Server error: {e}")
         finally: self.stop()
 
+
+def set_console_title(status: str = ""):
+    title = f"Silero TTS RT Server v{MAIN_VERSION}"
+    if status: title += f" - {status}"
+    try:
+        if sys.platform == "win32":
+            ctypes.windll.kernel32.SetConsoleTitleW(title)
+        else:
+            sys.stdout.write(f"\x1b]2;{title}\x07")
+            sys.stdout.flush()
+    except Exception as e:
+        pass
+
+
 if __name__ == "__main__":
+    set_console_title()
     print("")
     print("   ______  _____  _        ______  ______   ______       _______ _______  ______")
     print("  / |       | |  | |      | |     | |  | \\ / |  | \\        | |     | |   / |")

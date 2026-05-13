@@ -157,7 +157,7 @@ if exist "%PRE_ARCHIVE_PATH%" (
     
     "%SEVENZIP_EXE%" u "%PRE_ARCHIVE_NAME%" "%FOLDERNAME%" ^
         -t7z -ms=off -ssw -bsp1 -mx=9 -myx=9 -mmt=on -m0=lzma2:fb=273:d=1024m ^
-        -x@excludes.txt 2>nul
+        -x@excludes.txt
     
     del excludes.txt 2>nul
     rename "%PRE_ARCHIVE_NAME%" "%RELEASE_NAME%.7z" >nul 2>&1
@@ -171,7 +171,7 @@ echo Using full archive mode...
 pushd releases >nul
 
 "%SEVENZIP_EXE%" a "%FOLDERNAME%.7z" "%FOLDERNAME%" ^
-    -t7z -ms=off -ssw -bsp1 -mx=9 -myx=9 -mmt=on -m0=lzma2:fb=273:d=1024m 2>nul
+    -t7z -ms=off -ssw -bsp1 -mx=9 -myx=9 -mmt=on -m0=lzma2:fb=273:d=1024m
 
 rename "%FOLDERNAME%.7z" "%RELEASE_NAME%.7z" >nul 2>&1
 

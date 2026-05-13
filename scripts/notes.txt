@@ -1,0 +1,127 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Help on method apply_tts:
+apply_tts(text=None, ssml_text=None, speaker: str = 'ru_zhadyra', sample_rate: int = 48000, put_accent=True, put_stress_homo=True, put_yo=True, put_yo_homo=True, stress_single_vowel=True, voice_path=None, symbol_durs=None, return_ts=False, lang=None, type_str=None, intensity=3) method of <torch_package_0>.multi_acc_v3_package.TTSModelMultiAcc_v3 instance
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<speak>
+	<prosody rate="90%" pitch="x-high">
+		первая часть текста. вот так звучит.
+		<prosody rate="120%" pitch="x-low">
+			вторая часть текста. вот так звучит.
+		</prosody>
+	третья часть текста. вот так звучит.
+	</prosody>
+<speak>
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+{
+  "timestamp": "2026-05-13T20:39:11.162118",
+  "model_path": "models/v5_5_ru.pt",
+  "device": "cpu",
+  "model_type": "<class '<torch_package_0>.multi_acc_v3_package.TTSModelMultiAcc_v3'>",
+  "attributes": {
+    "device": "cpu",
+    "packages": "[<<torch_package_0>.multi_acc_v3_package.PartTTSModelMultiAcc_v3 object at 0x0000023723D31BE0>]",
+    "speaker_to_package": {
+      "aidar": 0,
+      "baya": 0,
+      "kseniya": 0,
+      "eugene": 0,
+      "xenia": 0
+    },
+    "speakers": [
+      "aidar",
+      "baya",
+      "kseniya",
+      "eugene",
+      "xenia"
+    ],
+    "symbols": "_~|!+,-.:;?абвгдежзийклмнопрстуфхцчшщъыьэюяё–… "
+  },
+  "available_speakers": [
+    "aidar",
+    "baya",
+    "kseniya",
+    "eugene",
+    "xenia"
+  ],
+  "apply_tts_params": {
+    "text": {
+      "default": "None",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "ssml_text": {
+      "default": "None",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "speaker": {
+      "default": "ru_zhadyra",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "<class 'str'>"
+    },
+    "sample_rate": {
+      "default": "48000",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "<class 'int'>"
+    },
+    "put_accent": {
+      "default": "True",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "put_stress_homo": {
+      "default": "True",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "put_yo": {
+      "default": "True",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "put_yo_homo": {
+      "default": "True",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "stress_single_vowel": {
+      "default": "True",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "voice_path": {
+      "default": "None",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "symbol_durs": {
+      "default": "None",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "return_ts": {
+      "default": "False",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "lang": {
+      "default": "None",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "type_str": {
+      "default": "None",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    },
+    "intensity": {
+      "default": "3",
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "annotation": "any"
+    }
+  }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
