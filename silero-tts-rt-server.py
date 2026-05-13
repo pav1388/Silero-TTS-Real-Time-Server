@@ -497,6 +497,7 @@ class HTTPServer:
         @self.app.route('/speak/stream', method='OPTIONS')
         @self.app.route('/speak/raw', method='OPTIONS')
         @self.app.route('/restart', method='OPTIONS')
+        @self.app.route('/ping', method='OPTIONS')
         def options_handler():
             response.status = 200
             return ''
@@ -625,6 +626,11 @@ class HTTPServer:
                 logger.error(f"Restart failed: {e}")
                 response.status = 500
                 return {"error": str(e)}
+        
+        @self.app.route('/ping', method='GET')
+        def ping():
+            response.content_type = 'application/json'
+            return {'status': 'ok', 'message': 'pong'}
     
     def run(self, host: str, port: int):
         run(self.app, host=host, port=port, quiet=not DEBUG, server='wsgiref')

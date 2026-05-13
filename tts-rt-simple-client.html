@@ -270,7 +270,7 @@
         .checkbox-group label {
             display: block;
             margin: 4px 0;
-            font-weight: normal;
+            font-weight: bold;
         }
         .sample-rate-group {
             margin: 8px 0;
@@ -280,7 +280,7 @@
         }
         .sample-rate-group label {
             margin-right: 12px;
-            font-weight: normal;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -626,26 +626,59 @@
     }
     
     async function restartServer() {
-        var server = serverUrlInput.value;
-        if (!server) {
-            alert('Введите URL сервера');
-            return;
-        }
-        showStatus('Отправка запроса на перезагрузку сервера...', false);
-        try {
-            var response = await fetch(server + '/restart', {method: 'POST'});
-            if (response.ok) {
-                showStatus('Сервер перезагружается... Подождите ~12 секунд', false);
-                setTimeout(function() { loadSpeakersFromServer(); }, 12000);
-            } else {
-                var errorText = await response.text();
-                showStatus('Ошибка перезагрузки: ' + errorText, true);
-            }
-        } catch (error) {
-            showStatus('Ошибка: ' + error.message, true);
-            setTimeout(function() { loadSpeakersFromServer(); }, 12000);
-        }
-    }
+		var server = serverUrlInput.value;
+		if (!server) {
+			alert('Введите URL сервера');
+			return;
+		}
+		showStatus('Отправка запроса на перезагрузку сервера...', false);
+		try {
+			var response = await fetch(server + '/restart', {method: 'POST'});
+			if (response.ok) {
+				showStatus('Сервер перезагружается, ожидание готовности...', false);
+				await new Promise(resolve => setTimeout(resolve, 3000));
+				await waitForServerReady(server);
+				await loadSpeakersFromServer();
+				showStatus('Сервер готов, список голосов обновлён', false);
+			} else {
+				var errorText = await response.text();
+				showStatus('Ошибка перезагрузки: ' + errorText, true);
+			}
+		} catch (error) {
+			showStatus('Ошибка: ' + error.message, true);
+			await waitForServerReady(server);
+			await loadSpeakersFromServer();
+		}
+	}
+
+	async function waitForServerReady(server, maxAttempts = 50, delayMs = 1000) {
+		showStatus('Ожидание готовности сервера...', false);
+		
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 2000);
+				
+				const response = await fetch(server + '/ping', {
+					signal: controller.signal
+				});
+				clearTimeout(timeoutId);
+				
+				if (response.ok) {
+					const data = await response.json();
+					if (data.message === "pong") {
+						return true;
+					}
+				}
+			} catch (error) {
+				showStatus(`Ожидание сервера... (${attempt}/${maxAttempts})`, false);
+			}
+			await new Promise(resolve => setTimeout(resolve, delayMs));
+		}
+		
+		showStatus('Превышено время ожидания сервера', true);
+		return false;
+	}
     
     function getSelectedSpeakerId() { return currentSpeakerId; }
     function getFinalSpeedPercent() { var p = VOICE_PRESETS[currentSpeakerId]; var sp = p ? p.base_speed : 100; if(speedValue>0) sp += speedValue*20; else sp += speedValue*6; return Math.max(40,Math.min(300,Math.round(sp))); }
