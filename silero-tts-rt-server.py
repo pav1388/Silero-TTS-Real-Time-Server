@@ -303,10 +303,10 @@ class TTSService:
         vol_boost_mod = None
         if self.text_processor is None:
             if len(sentence) > Config.MAX_TEXT_LENGTH:
-                ssml = sentence[:Config.MAX_TEXT_LENGTH]
+                ssml = f"<speak>{sentence[:Config.MAX_TEXT_LENGTH]}</speak>"
                 logger.warning(f"Text length truncated to {Config.MAX_TEXT_LENGTH} chars.")
             else:
-                ssml = sentence
+                ssml = f"<speak>{sentence}</speak>"
             vol_boost_mod = vol_boost
         else:
             ssml, vol_boost_mod = self.text_processor.process_sentence(sentence, speed, pitch, vol_boost)
