@@ -7,8 +7,9 @@ import torch
 from bottle import Bottle, hook, request, response, run
 
 # ignore warning for torch 2.0.1
-import warnings
-warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
+if torch.__version__.startswith("2.0.1"):
+    import warnings
+    warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
 
 MAIN_VERSION = "0.8.3"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
