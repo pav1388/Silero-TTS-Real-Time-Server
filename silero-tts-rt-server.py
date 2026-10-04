@@ -1,7 +1,7 @@
 # silero-tts-rt-server.py
 # pav13
 
-import ctypes, logging, os, platform, signal, struct, sys, threading, time
+import ctypes, logging, os, platform, random, signal, struct, sys, threading, time
 import numpy as np
 import torch
 from bottle import Bottle, hook, request, response, run
@@ -11,7 +11,7 @@ if torch.__version__.startswith("2.0.1"):
     import warnings
     warnings.filterwarnings("ignore", message="Converting mask without torch.bool dtype")
 
-MAIN_VERSION = "0.8.4"
+MAIN_VERSION = "0.8.5"
 DEBUG = ('--debug' in sys.argv) or (os.environ.get('DEBUG', '0').lower() in ('1', 'true'))
 CUDA = ('--cuda' in sys.argv or '--gpu' in sys.argv) or (os.environ.get('CUDA', '0').lower() in ('1', 'true'))
 NO_CPU_MONITOR = ('--no-cpu-monitor' in sys.argv) or (os.environ.get('NO_CPU_MONITOR', '0').lower() in ('1', 'true'))
@@ -258,34 +258,60 @@ class TTSService:
         self.text_processor = text_processor
         self.audio_synthesizer = AudioSynthesizer(model, device)
         self.cpu_monitor = cpu_monitor
+        self._last_random_speaker = None
+        self._last_random_m_speaker = None
+        self._last_random_f_speaker = None
+    
+    def _no_repeat_speaker(self, candidates, last):
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            return candidates[0]
+        pool = [c for c in candidates if c != last] if last in candidates else candidates
+        if not pool:
+            pool = candidates
+        return random.choice(pool)
     
     def _resolve_speaker(self, speaker_id: int, text: str = "") -> tuple:
         real_speakers_count = Config.REAL_SPEAKERS_COUNT
 
-        if speaker_id == real_speakers_count: # RANDOM (оба пола)
-            speaker_id = int(time.time() * 100000) % real_speakers_count
-        elif speaker_id == real_speakers_count + 1: # RANDOM_M (только мужские)
-            male_speakers = [i for i, s in enumerate(Config.SPEAKERS[:real_speakers_count]) if s.get('gender') == 'male']
+        if speaker_id == real_speakers_count:  # RANDOM (оба пола)
+            candidates = list(range(real_speakers_count))
+            speaker_id = self._no_repeat_speaker(candidates, self._last_random_speaker)
+            self._last_random_speaker = speaker_id
+
+        elif speaker_id == real_speakers_count + 1:  # RANDOM_M
+            male_speakers = [i for i, s in enumerate(Config.SPEAKERS[:real_speakers_count])
+                             if s.get('gender') == 'male']
             if male_speakers:
-                speaker_id = male_speakers[int(time.time() * 100000) % len(male_speakers)]
+                speaker_id = self._no_repeat_speaker(male_speakers, self._last_random_m_speaker)
+                self._last_random_m_speaker = speaker_id
             else:
-                speaker_id = int(time.time() * 100000) % real_speakers_count
-        elif speaker_id == real_speakers_count + 2: # RANDOM_F (только женские)
-            female_speakers = [i for i, s in enumerate(Config.SPEAKERS[:real_speakers_count]) if s.get('gender') == 'female']
+                candidates = list(range(real_speakers_count))
+                speaker_id = self._no_repeat_speaker(candidates, self._last_random_speaker)
+                self._last_random_speaker = speaker_id
+
+        elif speaker_id == real_speakers_count + 2:  # RANDOM_F
+            female_speakers = [i for i, s in enumerate(Config.SPEAKERS[:real_speakers_count])
+                               if s.get('gender') == 'female']
             if female_speakers:
-                speaker_id = female_speakers[int(time.time() * 100000) % len(female_speakers)]
+                speaker_id = self._no_repeat_speaker(female_speakers, self._last_random_f_speaker)
+                self._last_random_f_speaker = speaker_id
             else:
-                speaker_id = int(time.time() * 100000) % real_speakers_count
-        elif speaker_id == real_speakers_count + 3: # HASH (на основе текста)
+                candidates = list(range(real_speakers_count))
+                speaker_id = self._no_repeat_speaker(candidates, self._last_random_speaker)
+                self._last_random_speaker = speaker_id
+
+        elif speaker_id == real_speakers_count + 3:  # HASH
             t = text[:500] if text else str(time.time())
             h = 5381
             for c in t:
                 h = ((h << 5) + h) ^ ord(c)
             speaker_id = (h & 0x7fffffff) % real_speakers_count
-        
+
         if not (0 <= speaker_id < real_speakers_count):
             speaker_id = 0
-        
+
         return speaker_id, Config.SPEAKERS[speaker_id]
     
     def speakers_list(self):

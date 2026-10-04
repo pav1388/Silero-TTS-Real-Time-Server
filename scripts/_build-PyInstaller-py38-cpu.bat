@@ -91,7 +91,7 @@ echo [5/7] Copy files...
 
 xcopy "models\v5_5_ru.pt" "releases\%FOLDERNAME%\models\" /I /Y >nul 2>&1
 xcopy "README.md" "releases\%FOLDERNAME%\" /Y >nul 2>&1
-xcopy "tts-rt-simple-client.html" "releases\%FOLDERNAME%\" /Y >nul 2>&1
+xcopy "_simple-client.html" "releases\%FOLDERNAME%\" /Y >nul 2>&1
 xcopy "LunaTranslator\*" "releases\%FOLDERNAME%\LunaTranslator\" /E /I /Y >nul 2>&1
 
 echo        [OK]

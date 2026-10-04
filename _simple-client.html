@@ -1,0 +1,780 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="ru">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>[TTS+Translate] Client</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEACABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAoGAAgJBgAGCAUABgcEAAcIBQAHCAQABQcEAAUGBAAGBwUABgkFABYXFQB4eXgAenp5AHl6eABERUMAFBUSAM3NzQDT09MApqemAKenpgC0tbQA9/b2AD0+PAAEBwQABAYEAAUHBQA4OTYA9/f3ABMVEgDLy8oAa2xrADQ1MgD7+voAPT89ACMlIwAVFxQAh4eGAPn5+QDp6ekAjI2MAE1OTQAKCwkABAYDAHFycAC8vbwA/f39ALO0swALDAoACQoIABUVEwAGBgQAGx0bAOPj4gBlZmUABQYFAAYGBQA+Pz0A8vLyAMnJyABpamkAKSonAPT09AChoaEAhoaFAJKTkQDw8PAAOTs5AElLSACio6IAo6OiAERGRAAFBgMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAgISAAAAAAAAAAAAABICAgICAhICAAAAAAAAAAICAQEBAQHBwgrAAAAAAA4CARERUZGRkcZGSsAAAAICAQ9Pj9AQEFCQxkrCAAANzc4OToICAQEOzwICAgAAAgZCDEyMxoJNDU2GRkIAAgZGRgaCRssLS4vMBkZBwcaBxkZBCUmJygpKggYKwgEAAcIByAhIggICCMkBwgEAAAHCBobHB0HCAQeHwcIBwAABAcHEBESExQVFhcYGQcAAAAHBwcLDA0NDg8ICQkAAAAAAAcHBAgHBwkEBAoAAAAAAAAAAwMEBAQFBgYAAAAAAAAAAAAAAAECAAAAAAAAAPw/AADwDwAA4AcAAMADAACAAQAAgAEAAIABAAAAAAAAAAAAAIABAACAAQAAgAEAAMADAADgBwAA8A8AAP5/AAA=">
+    <style>
+        body {
+            margin: 8px;
+            padding: 0;
+            background: #C0C0C0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+        }
+        .box {
+            background: #E0E0E0;
+            border: 2px solid #000;
+            padding: 8px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 16px;
+            margin: 0 0 8px 0;
+            border-bottom: 1px solid #000;
+        }
+
+        /* вкладки */
+        .tabs {
+            display: table;
+            gap: 2px;
+            width: 100%;
+			margin-bottom: 12px;
+            border-bottom: 1px solid #808080;
+        }
+        .tab-btn {
+			display: table-cell;
+			width: 33.33%;
+			text-align: center;
+            background: #D0D0D0;
+            border: 1px solid #808080;
+            border-bottom: none;
+            padding: 5px 12px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: #E0E0E0;
+            border-bottom: 1px solid #E0E0E0;
+            margin-bottom: -1px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* общие элементы */
+        .server-bar {
+            background: #D4D0C8;
+            border: 1px solid #000;
+            padding: 5px;
+            margin-bottom: 12px;
+        }
+        .status-msg {
+            background: #FFFFCC;
+            border: 1px solid #000;
+            padding: 4px;
+            margin: 8px 0;
+            display: none;
+        }
+        .url-box {
+            background: #D4D0C8;
+            border: 1px solid #000;
+            padding: 4px;
+            font-size: 10px;
+            word-break: break-all;
+            margin-top: 8px;
+        }
+        .big-btn {
+            background: #C0C0C0;
+            border: 2px solid #FFF;
+            border-color: #FFF #808080 #808080 #FFF;
+            padding: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+        .big-btn:active {
+            border-color: #808080 #FFF #FFF #808080;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .text-input {
+            width: 100%;
+            border: 1px solid #000;
+            background: #FFF;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 2px;
+			height: 60px;
+			resize: vertical;
+        }
+        .param-row {
+            margin-bottom: 6px;
+        }
+        .spin-group button {
+            width: 22px;
+            background: #E0E0E0;
+            border: 1px solid #000;
+            font-weight: bold;
+        }
+        .speaker-item {
+            margin-bottom: 4px;
+            cursor: pointer;
+		}
+        .speaker-item:hover {
+            background: #C8C8C8;
+        }
+        .preset-info {
+            margin-bottom: 4px;
+            margin-left: auto;
+			float: right;
+            font-size: 10px;
+        }
+        .lang-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .lang-item {
+            flex: 1;
+        }
+        .lang-item select {
+            width: 100%;
+            background: #FFF;
+            border: 1px solid #000;
+            font-family: monospace;
+        }
+        .mini-btns {
+            display: flex;
+            gap: 6px;
+            margin: 4px 0 8px 0;
+        }
+        .mini-btn {
+            background: #C0C0C0;
+            border: 1px solid #808080;
+            font-size: 11px;
+            padding: 2px 8px;
+            cursor: pointer;
+        }
+        .two-cols {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .col {
+            flex: 1;
+        }
+        .speaker-panel, .param-panel {
+            border: 1px solid #000;
+            background: #D4D0C8;
+            padding: 5px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 14px;
+            background: #C0C0C0;
+            border: 1px solid #808080;
+            display: none;
+            margin: 5px 0;
+        }
+        .progress-fill {
+            height: 12px;
+            background: #000080;
+            width: 0%;
+        }
+        audio {
+            width: 100%;
+            margin-top: 8px;
+            display: none;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #333;
+            margin-top: 5px;
+        }
+		.example-group {
+            font-size: 12px;
+			font-weight: bold;
+            margin:5px 0;
+        }
+        hr {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>[TTS + Translate] Simple Client</h1>
+
+    <!-- общая панель -->
+    <div class="server-bar">
+		<table width="100%" cellpadding="0" cellspacing="0">
+			<tr>
+				<td width="40"><b>URL:</b></td>
+				<td width="100%"><input type="text" id="server-url" value="http://127.0.0.1:23457" style="width: 99%; background:#FFF; border:1px solid #000;"></td>
+				<td width="40" style="text-align:center; white-space: nowrap;">
+					<button id="ping-btn" title="Соединение с сервером" style="font-size:20px; background:none; border:none; cursor:pointer; padding:4px;">⏳</button>
+					<button id="restart-btn" title="Перезагрузить сервер" style="font-size:20px; background:none; border:none; cursor:pointer; padding:4px;">🔄</button>
+				</td>
+			</tr>
+		</table>
+	</div>
+
+    <!-- вкладки -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="tts-server">🎙 TTS (сервер)</button>
+        <button class="tab-btn" data-tab="tts-raw">⚡ TTS (raw)</button>
+        <button class="tab-btn" data-tab="translate">🌐 Перевод</button>
+    </div>
+
+    <!-- ==================== ВКЛАДКА TTS SERVER ==================== -->
+    <div id="tab-tts-server" class="tab-content active">
+        <div class="two-cols">
+            <div class="col">
+                <div class="speaker-panel">
+                    <div><b>Голоса</b> <a href="#" onclick="loadSpeakers(); return false;">[обновить]</a></div>
+                    <div id="speaker-list-server"></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="param-panel">
+                    <div><b>Параметры</b></div>
+                    <div class="param-row">
+                        <span>Speed:</span>
+                        <div class="spin-group" style="display:inline-block;">
+                            <button id="spd-m">-</button>
+                            <input type="text" id="spd-val" value="0.0" size="4" readonly style="text-align: center;">
+                            <button id="spd-p">+</button>
+                        </div>
+                        <span class="info-text">-10..10</span>
+                    </div>
+                    <div class="param-row">
+                        <span>Pitch:</span>
+                        <div class="spin-group" style="display:inline-block;">
+                            <button id="pch-m">-</button>
+                            <input type="text" id="pch-val" value="0.0" size="4" readonly style="text-align: center;">
+                            <button id="pch-p">+</button>
+                        </div>
+                        <span class="info-text">-10..10</span>
+                    </div>
+                    <div class="param-row">
+                        <label><input type="checkbox" id="stream-mode" checked> Поток (ускоряет начало воспроизведения)</label>
+                    </div>
+                    <div class="info-text" id="final-params-server">speed: - | pitch: - | vol: -</div>
+                </div>
+            </div>
+        </div>
+        <div class="example-group">
+            <a href="#" onclick="setExample(1)">[Пример 1]</a> |
+            <a href="#" onclick="setExample(2)">[Пример 2]</a> |
+            <a href="#" onclick="setExample(3)">[Пример 3]</a> |
+            <a href="#" onclick="setExample(4)">[Пример 4]</a> |
+            <a href="#" onclick="setExample(5)">[Пример 5]</a> |
+            <a href="#" onclick="setExample(6)">[Пример 6]</a>
+        </div>
+        <div class="info-text">Ударения: + перед гласной. Пример: м+оре</div>
+		<div><b>Текст:</b><br>
+            <textarea id="text-server" rows="3" class="text-input">Привет! Тестовый текст можно выбрать из примеров выше или написать свой.</textarea>
+			<div class="mini-btns">
+                <button type="button" id="clear-text-server" class="mini-btn">Очистить</button>
+                <button type="button" id="copy-text-server" class="mini-btn">Копировать</button>
+                <button type="button" id="paste-text-server" class="mini-btn">Вставить</button>
+            </div>
+        </div>
+        
+        <div class="btn-group">
+            <button id="gen-server" class="big-btn" style="width:100%;">▶ ГЕНЕРИРОВАТЬ</button>
+            <button id="save-server" class="big-btn" style="width:100%;">💾 СОХРАНИТЬ  WAV</button>
+        </div>
+        <div id="progress-server" class="progress-bar"><div class="progress-fill"></div></div>
+    </div>
+
+    <!-- ==================== ВКЛАДКА TTS RAW ==================== -->
+    <div id="tab-tts-raw" class="tab-content">
+        <div class="two-cols">
+            <div class="col">
+                <div class="speaker-panel">
+                    <div><b>Голоса</b> <a href="#" onclick="loadSpeakers(); return false;">[обновить]</a></div>
+                    <div id="speaker-list-raw"></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="param-panel">
+                    <div><b>Настройки</b></div>
+                    <label><input type="checkbox" id="put-accent" checked>put_accent (расстановка ударений)</label><br>
+                    <label><input type="checkbox" id="put-yo" checked>put_yo (ёфикация)</label><br>
+                    <label><input type="checkbox" id="put-stress-homo" checked>put_stress_homo (ударения в омографах)</label><br>
+                    <label><input type="checkbox" id="put-yo-homo" checked>put_yo_homo (ё в омографах)</label><br>
+                    <div style="margin-top:6px;"><b>Частота:</b><br>
+                        <label><input type="radio" name="sr" value="8000">8кГц</label>
+                        <label><input type="radio" name="sr" value="24000">24кГц</label>
+                        <label><input type="radio" name="sr" value="48000" checked>48кГц</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+		<div class="example-group">
+            <a href="#" onclick="setExample(1)">[Пример 1]</a> |
+            <a href="#" onclick="setExample(2)">[Пример 2]</a> |
+            <a href="#" onclick="setExample(3)">[Пример 3]</a> |
+            <a href="#" onclick="setExample(4)">[Пример 4]</a> |
+            <a href="#" onclick="setExample(5)">[Пример 5]</a> |
+            <a href="#" onclick="setExample(6)">[Пример 6]</a>
+        </div>
+        <div class="info-text">Ударения: + перед гласной. Пример: м+оре</div>
+        <div><b>Текст (SSML поддерживается, &lt;speak&gt; добавляется автоматически):</b><br>
+            <textarea id="text-raw" rows="3" class="text-input">Привет! Тестовый текст можно выбрать из примеров выше или написать свой.</textarea>
+			<div class="mini-btns">
+                <button type="button" id="clear-text-raw" class="mini-btn">Очистить</button>
+                <button type="button" id="copy-text-raw" class="mini-btn">Копировать</button>
+                <button type="button" id="paste-text-raw" class="mini-btn">Вставить</button>
+            </div>
+        </div>
+        <div class="btn-group">
+            <button id="gen-raw" class="big-btn" style="width:100%;">▶ ГЕНЕРИРОВАТЬ</button>
+            <button id="save-raw" class="big-btn" style="width:100%;">💾 СОХРАНИТЬ  WAV</button>
+        </div>
+        <div id="progress-raw" class="progress-bar"><div class="progress-fill"></div></div>
+    </div>
+
+    <!-- ==================== ВКЛАДКА ПЕРЕВОД ==================== -->
+    <div id="tab-translate" class="tab-content">
+        <div class="lang-row">
+            <div class="lang-item">
+                <b>С:</b>
+                <select id="from-lang">
+                    <option value="ja" selected>ja (японский)</option>
+                    <option value="en" selected>en (английский)</option>
+                </select>
+            </div>
+            <div class="lang-item">
+                <b>На:</b>
+                <select id="to-lang">
+                    <option value="ru" selected>ru (русский)</option>
+                </select>
+            </div>
+        </div>
+		<div class="example-group">
+            <a href="#" onclick="setExample(1)">[Пример 1]</a> |
+            <a href="#" onclick="setExample(2)">[Пример 2]</a> |
+            <a href="#" onclick="setExample(3)">[Пример 3]</a> |
+            <a href="#" onclick="setExample(4)">[Пример 4]</a> |
+            <a href="#" onclick="setExample(5)">[Пример 5]</a> |
+            <a href="#" onclick="setExample(6)">[Пример 6]</a>
+        </div>
+        <div><b>Оригинальный текст:</b>
+            <textarea id="text-src" rows="3" class="text-input" placeholder="Введите свой текст или выберите из примеров выше..."></textarea>
+            <div class="mini-btns">
+                <button type="button" id="clear-src" class="mini-btn">Очистить</button>
+                <button type="button" id="copy-src" class="mini-btn">Копировать</button>
+                <button type="button" id="paste-src" class="mini-btn">Вставить</button>
+            </div>
+        </div>
+        <div><b>Перевод:</b>
+            <textarea id="text-dst" rows="3" class="text-input" placeholder="Перевод появится здесь..."></textarea>
+            <div class="mini-btns">
+                <button type="button" id="clear-dst" class="mini-btn">Очистить</button>
+                <button type="button" id="copy-dst" class="mini-btn">Копировать</button>
+                <button type="button" id="paste-dst" class="mini-btn">Вставить</button>
+            </div>
+        </div>
+        <button id="translate-btn" class="big-btn" style="width:100%;">🌐 ПЕРЕВЕСТИ</button>
+    </div>
+
+    <!-- общие элементы: статус, плеер, превью URL -->
+    <div id="status-msg" class="status-msg"></div>
+    <audio id="audio-player" controls></audio>
+    <div id="url-preview" class="url-box">→ запрос</div>
+</div>
+
+<script>
+    // ---------- глобальные данные ----------
+    let SPEAKERS = [];
+    let VOICE_PRESETS = {};
+    let currentSpeakerId = 0;
+    let speedVal = 0.0, pitchVal = 0.0;
+    let currentModeTab = "tts-server";   // tts-server, tts-raw, translate
+	let pingInterval = null;
+	let lastPingSuccessful = false;
+	let currentPingIntervalMs = 30000; // стартовый интервал 30 секунд
+	
+    // DOM элементы общие
+    const serverUrl = document.getElementById('server-url');
+    const statusDiv = document.getElementById('status-msg');
+    const audioPlayer = document.getElementById('audio-player');
+    const urlPreview = document.getElementById('url-preview');
+
+    // примеры текстов
+    const tts_ru_examples = {
+        1: "Ехал Грека через реку, видит Грека — в реке рак. Сунул Грека руку в реку, рак за руку Греку — цап! Мышка сушек насушила, мышка мышек пригласила, мышки сушки кушать стали, з+убки сразу же сломали.",
+        2: "Что? Не может быть! Да это же просто великолепно... Ой, подожди, я ошибся.",
+        3: "Для выхода на низкую околоземную орбиту требуется скорость примерно 7,9 километра в секунду. Системы жизнеобеспечения корабля «Восток-1» работали в штатном режиме, несмотря на перепады температур от минус ста до плюс ста градусов.",
+        4: "Он установил Windows 11, запустил файл test_v5.mp3 и переключился на Wi-Fi 6. Hello World! 123.456 тест-драйв... что будет? (может быть) [или нет] 1/2 круга & 5% скидка.",
+        5: "У меня 2 яблока, 3 груши и 5% апельсинов. Полтора землекопа выкопали 2,5 метра канавы за 3,5 часа. Это стоит 1500 рублей или 1.5 тысячи? 99,9% что это работает! Сегодня 15 марта 2024 года, время 14 часов 30 минут. Встреча назначена на 25.12.2024 в 18:45. Я родился 1 января 2000 года. Мне 1,5 года или полтора года?",
+        6: "Охотник на скатов «Флирт с ангельским огнем», как и большинство кораблей такого типа, в море казался злым и лихим. Наполовину военное судно, наполовину гоночный ялик-переросток, сочетавший центр тяжести в остром киле и неправдоподобные мощности грав-силы в двойных капсулах на аутригерах, – в первую очередь он был построен для беспечной скорости и пиратства. Слоновые скаты и их родственники поменьше – быстры в воде, но важнее то, что их мясо портится, если оставить его надолго без обработки. Можно заморозить туши и торговать спокойно, но если успеешь домчать до больших рынков в таких финансовых центрах, как Миллспорт, то сорвешь настоящий куш. А для этого нужно быстроходное судно. Судостроители по всему Харлану понимали и исходили из этого. Среди тех же судостроителей ходило негласное понимание, что лучшие слоновые скаты обитают и нерестятся в угодьях, отведенных эксклюзивно для Первых Семей. Браконьерство – серьезное преступление, и если хочешь, чтобы оно сошло тебе с рук, быстроходному судну также нужен низкий и малозаметный профиль – как визуально, так и на радаре. Если надо сбежать от правоохранителей Харлана, найдется много способов хуже, чем на борту охотника. На второй день в море, обнадеженный знанием, что мы уже так далеко от Миллспортского архипелага и нас не догонит ни один воздушный аппарат, я вышел на палубу и встал на левом мостке аутригера, глядя, как подо мной проносится пенящийся океан. Брызги на ветру и ощущение, что события летят на меня слишком быстро, чтобы их осознать. Прошлое и груз смертей оставались в кильватере, унося с собой выбор и решения, которые уже поздно менять."
+    };
+	const trans_examples = {
+		en: {
+			1: "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked. If Peter Piper picked a peck of pickled peppers, where's the peck of pickled peppers Peter Piper picked?",
+			2: "Notwithstanding the foregoing, the lessee shall indemnify and hold harmless the lessor from any and all claims, damages, or liabilities arising out of or relating to the use or misuse of the demised premises, including but not limited to attorney's fees and court costs, whether or not such claims are meritorious.",
+			3: "The boy stared at the girl for a long time. She stood by the window, her dark hair swaying gently in the summer breeze. 'If I disappear one day,' she said quietly, 'would you come looking for me?' He wanted to say yes, but the words stuck in his throat. Outside, the cicadas were crying, and the world felt impossibly fragile, like a soap bubble about to burst.",
+			4: "Unlock your full potential with NeuroBoost™! Clinically shown to enhance cognitive function by 47% within just two weeks. Say goodbye to brain fog and hello to laser-sharp focus. Order now and get a second bottle absolutely free — but wait, there's more!", 
+			5: "Thank you for contacting TechSupport. I understand you're unable to connect to the VPN. Could you please confirm whether you have tried resetting your network adapter? Also, is the error message 'Unable to establish a secure connection' still appearing? Let me escalate this to Level 2.",
+			6: "In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since. 'Whenever you feel like criticizing any one,' he told me, 'just remember that all the people in this world haven't had the advantages that you've had.' He didn't say any more, but we've always been unusually communicative in a reserved way, and I understood that he meant a great deal more than that. Consequently, I'm inclined to reserve all judgments, a habit that has opened up many curious natures to me and also made me the victim of not a few veteran bores. The abnormal mind is quick to detect and attach itself to this quality when it appears in a normal person, and so it came about that in college I was unjustly accused of being a politician, because I was privy to the secret griefs of wild, unknown men. Most of the confidences were unsought — frequently I have feigned sleep, preoccupation, or a hostile levity when I realized by some unmistakable sign that an intimate revelation was quivering on the horizon — for the intimate revelations of young men, or at least the terms in which they express them, are usually plagiaristic and marred by obvious suppressions. Reserving judgments is a matter of infinite hope. I am still a little afraid of missing something if I forget that, as my father snobbishly suggested, and I snobbishly repeat, a sense of the fundamental decencies is parcelled out unequally at birth."
+		},
+		ja: {
+			1: "ピーター・パイパーはピクルスしたピーマンをひとさじ摘んだ。ピーター・パイパーが摘んだピクルスしたピーマンはひとさじ。もしピーター・パイパーがピクルスしたピーマンをひとさじ摘んだのなら、ピーター・パイパーが摘んだピクルスしたピーマンのひとさじはどこへ行った？",
+			2: "本契約のいかなる条項も、賃借人が書面をもって賃貸人に通知することなく当該権利を第三者に譲渡または移転することを許容するものではなく、かかる譲渡または移転が行われた場合、賃貸人は当該契約を直ちに解除する権利を有するものとする。",
+			3: "患者は急性呼吸困難、両側性ラ音、および室内気で88%の酸素飽和度を呈した。緊急胸部X線写真では、非定型肺炎に一致するびまん性間質性浸潤影が認められた。鑑別診断には、COVID-19、インフルエンザA/B型、RSウイルスが含まれる。",
+			4: "NeuroBoost™であなたの可能性を解き放ちましょう！臨床試験でわずか2週間で認知機能が47%向上することが実証されています。脳の曇りにさようなら、鋭い集中力にこんにちは。今すぐご注文で2本目完全無料 — しかもまだあります！",
+			5: "テクニカルサポートにお問い合わせいただきありがとうございます。VPNに接続できないとのこと、承知しました。ネットワークアダプタのリセットをお試しいただけましたでしょうか。また、「セキュリティで保護された接続を確立できませんでした」というエラーメッセージは引き続き表示されていますか？レベル2にエスカレーションいたします。",
+			6: "私がより若く、より傷つきやすかった年に、父がある忠告をしてくれた。それ以来、私はその言葉をずっと心の中で反芻している。『誰かを批判したくなったらいつでも』と父は言った。『この世の中の人間すべてが、君に与えられているような恵みに恵まれているわけではないということを思い出しなさい』父はそれ以上何も言わなかった。しかし、私たちは控えめなやり方ではあるがいつも異常なほどに率直に語り合ってきたので、私は彼がそれ以上のことを意味していると理解していた。その結果、私はいかなる判断も保留する傾向を持つようになった。その習慣は、多くの奇妙な性質の持ち主たちを私に近づけ、また少なからぬ数のベテラン退屈男たちの犠牲者にも私をした。異常な精神は、正常な人間にこの資質が現れたときに、素早くそれを見つけ出ししがみつくものである。そのため大学では、私は野生の未知なる男たちの秘密の悲しみを共有していたという理由で、不当に政治家であると非難されたのだ。打ち明け話のほとんどは求められていないものだった。私は、親密な啓示が地平線で震えていることを何かの確かな兆候で悟ると、しばしば眠ったふり、他のことに気を取られているふり、あるいは敵意のこもった軽薄さを装ってきた。若者の親密な啓示は、少なくとも彼らがそれを表現する言葉は、たいてい盗用であり、明らかな抑圧によって損なわれているからだ。判断を保留することは無限の希望の問題である。私は今でも、生まれながらにして基本的な礼儀正しさという感覚が不平等に分配されているということを、父が幾分スノッブに示唆し、私が幾分スノッブに繰り返しているように、忘れてしまったら何かを見逃してしまうのではないかと少し怖いのである。"
+		}
+	};
+
+    function showStatus(msg, isErr) {
+        statusDiv.innerHTML = msg;
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = isErr ? '#FFCCCC' : '#CCFFCC';
+    }
+	
+    // загрузка списка голосов
+    async function loadSpeakers() {
+        let url = serverUrl.value;
+        if(!url) return;
+        try {
+            let resp = await fetch(url + '/speakers');
+            if(!resp.ok) throw new Error('HTTP '+resp.status);
+            let data = await resp.json();
+            if(data && data.silero) {
+                SPEAKERS = data.silero.map(s => ({ id: s.id, name: s.name, display: s.id + " " + s.name + " " + (s.gender||'') }));
+                // пресеты для speed/pitch
+                VOICE_PRESETS = {};
+                for(let s of SPEAKERS) {
+                    VOICE_PRESETS[s.id] = { vol_boost:0, base_speed:100, base_pitch:"medium" };
+                    if(s.name === "aidar") VOICE_PRESETS[s.id] = { vol_boost:0, base_speed:119, base_pitch:"high" };
+                    if(s.name === "baya") VOICE_PRESETS[s.id] = { vol_boost:1.5, base_speed:100, base_pitch:"low" };
+                    if(s.name === "kseniya") VOICE_PRESETS[s.id] = { vol_boost:0, base_speed:100, base_pitch:"medium" };
+					if(s.name === "eugene") VOICE_PRESETS[s.id] = { vol_boost:-1, base_speed:89, base_pitch:"high" };
+					if(s.name === "xenia") VOICE_PRESETS[s.id] = { vol_boost:0.5, base_speed:100, base_pitch:"medium" };
+                }
+                renderSpeakerLists();
+                if(SPEAKERS.length) currentSpeakerId = SPEAKERS[0].id;
+                updateFinalParams();
+            }
+        } catch(e) { console.warn(e); }
+    }
+
+    function renderSpeakerLists() {
+		// server вкладка
+		let contS = document.getElementById('speaker-list-server');
+		if(contS) {
+			let html = '';
+			for(let i=0; i<SPEAKERS.length; i++) {
+				let s = SPEAKERS[i];
+				let checked = (currentSpeakerId === s.id) ? 'checked' : '';
+				html += `<div class="speaker-item" onclick="document.getElementById('spk_${s.id}').click()">
+					<input type="radio" name="spkServer" id="spk_${s.id}" value="${s.id}" ${checked}>
+					<b>${s.display}</b>
+					<span class="preset-info">s:${VOICE_PRESETS[s.id]?.base_speed||100}% p:${VOICE_PRESETS[s.id]?.base_pitch||'medium'} v:${VOICE_PRESETS[s.id]?.vol_boost||0}dB</span>
+					</div>`;
+			}
+			contS.innerHTML = html;
+			document.querySelectorAll('#speaker-list-server input').forEach(r => {
+				r.onclick = () => { currentSpeakerId = parseInt(r.value); updateFinalParams(); updateRequestPreview(); };
+			});
+		}
+		
+		// raw вкладка
+		let contR = document.getElementById('speaker-list-raw');
+		if(contR) {
+			let html = '';
+			let rawSpk = SPEAKERS.slice(0,5);
+			for(let i=0; i<rawSpk.length; i++) {
+				let s = rawSpk[i];
+				let checked = (currentSpeakerId === s.id) ? 'checked' : '';
+				html += `<div class="speaker-item" onclick="document.getElementById('spk_raw_${s.id}').click()">
+					<input type="radio" name="spkRaw" id="spk_raw_${s.id}" value="${s.id}" ${checked}>
+					<b>${s.display}</b>
+					</div>`;
+			}
+			contR.innerHTML = html;
+			document.querySelectorAll('#speaker-list-raw input').forEach(r => {
+				r.onclick = (e) => { 
+					e.stopPropagation();
+					currentSpeakerId = parseInt(r.value); 
+					updateRequestPreview(); 
+				};
+			});
+			if(rawSpk.length && currentSpeakerId === 0) currentSpeakerId = rawSpk[0].id;
+		}
+	}
+
+    function getFinalSpeed() {
+        let p = VOICE_PRESETS[currentSpeakerId] || { base_speed:100 };
+        let sp = p.base_speed;
+        if(speedVal>0) sp += speedVal*20;
+        else sp += speedVal*6;
+        return Math.min(300, Math.max(40, Math.round(sp)));
+    }
+    function getFinalPitch() {
+        let levels = ["x-low","low","medium","high","x-high"];
+        let p = VOICE_PRESETS[currentSpeakerId] || { base_pitch:"medium" };
+        let idx = levels.indexOf(p.base_pitch);
+        if(idx==-1) idx=2;
+        let d = Math.round((pitchVal+10)/20*4)-2;
+        return levels[Math.min(4,Math.max(0,idx+d))];
+    }
+    function getFinalVol() { return VOICE_PRESETS[currentSpeakerId]?.vol_boost || 0; }
+    function updateFinalParams() {
+        let spd = getFinalSpeed(), pch = getFinalPitch(), vol = getFinalVol();
+        document.getElementById('final-params-server').innerHTML = `speed: ${spd}% | pitch: ${pch} | vol_boost: ${vol} dB`;
+    }
+
+    function updateRequestPreview() {
+        if(currentModeTab === 'translate') {
+            let url = serverUrl.value;
+            let txt = document.getElementById('text-src').value;
+            if(url && txt) {
+                let req = `${url}/translate?text=${encodeURIComponent(txt)}&from_lang=en&to_lang=ru`;
+                urlPreview.innerHTML = req;
+            }
+            return;
+        }
+        // tts режимы
+        let url = buildTTSUrl();
+        urlPreview.innerHTML = url || "Не хватает данных";
+    }
+
+    function buildTTSUrl() {
+        let server = serverUrl.value;
+        let text = (currentModeTab === 'tts-server') ? document.getElementById('text-server').value : document.getElementById('text-raw').value;
+        if(!server || !text) return null;
+        if(currentModeTab === 'tts-server') {
+            let endpoint = document.getElementById('stream-mode').checked ? '/speak/stream' : '/speak';
+            let spd = getFinalSpeed();
+            let pch = getFinalPitch();
+            let vol = getFinalVol();
+            return `${server}${endpoint}?text=${encodeURIComponent(text)}&id=${currentSpeakerId}&speed=${spd}&pitch=${pch}&vol_boost=${vol}`;
+        } else { // raw
+            let sr = 48000;
+            let srRadios = document.querySelectorAll('input[name="sr"]');
+            for(let r of srRadios) if(r.checked) sr = parseInt(r.value);
+            let speakerName = "aidar";
+            for(let s of SPEAKERS) if(s.id == currentSpeakerId) { speakerName = s.name; break; }
+            let url = `${server}/speak/raw?text=${encodeURIComponent('<speak>'+text+'</speak>')}&speaker=${speakerName}&sample_rate=${sr}`;
+            url += `&put_accent=${document.getElementById('put-accent').checked}`;
+            url += `&put_yo=${document.getElementById('put-yo').checked}`;
+            url += `&put_stress_homo=${document.getElementById('put-stress-homo').checked}`;
+            url += `&put_yo_homo=${document.getElementById('put-yo-homo').checked}`;
+            return url;
+        }
+    }
+
+    async function genTTS() {
+        let url = buildTTSUrl();
+        if(!url) { showStatus("Заполните URL и текст", true); return; }
+        let streaming = (currentModeTab === 'tts-server' && document.getElementById('stream-mode').checked);
+        showStatus(streaming ? "Поток..." : "Генерация...", false);
+        let prog = document.getElementById(currentModeTab === 'tts-server' ? 'progress-server' : 'progress-raw');
+        if(prog) { prog.style.display = 'block'; prog.querySelector('.progress-fill').style.width = '20%'; }
+        try {
+            audioPlayer.src = url;
+            audioPlayer.style.display = 'block';
+            audioPlayer.load();
+            await audioPlayer.play();
+            if(prog) prog.style.display = 'none';
+            showStatus("Воспроизведение", false);
+        } catch(e) { showStatus("Ошибка: "+e.message, true); if(prog) prog.style.display = 'none'; }
+    }
+
+    async function saveTTS() {
+        let url = buildTTSUrl();
+        if(!url) { showStatus("Заполните URL и текст", true); return; }
+        try {
+            let resp = await fetch(url);
+            if(!resp.ok) throw new Error('HTTP '+resp.status);
+            let blob = await resp.blob();
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'tts_audio.wav';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showStatus("Сохранено", false);
+        } catch(e) { showStatus("Ошибка: "+e.message, true); }
+    }
+
+    // перевод
+    async function doTranslate() {
+        let server = serverUrl.value;
+        let text = document.getElementById('text-src').value;
+        if(!server) { showStatus("Введите URL сервера", true); return; }
+        if(!text.trim()) { showStatus("Введите текст для перевода", true); return; }
+        let fromLang = document.getElementById('from-lang').value;
+        let toLang = document.getElementById('to-lang').value;
+        let reqUrl = `${server}/translate?text=${encodeURIComponent(text)}&from_lang=${fromLang}&to_lang=${toLang}`;
+        urlPreview.innerHTML = reqUrl;
+        showStatus("Перевод...", false);
+        try {
+            let resp = await fetch(reqUrl);
+            if(!resp.ok) { let err = await resp.json(); throw new Error(err.error || 'Ошибка'); }
+            let data = await resp.json();
+            document.getElementById('text-dst').value = data.translated || "";
+            showStatus("Готово", false);
+        } catch(e) { showStatus("Ошибка: "+e.message, true); }
+    }
+
+    function setExample(n) { 
+        if(currentModeTab === 'tts-server') { document.getElementById('text-server').value = tts_ru_examples[n] || ""; }
+        if(currentModeTab === 'tts-raw') { document.getElementById('text-raw').value = tts_ru_examples[n] || ""; }
+		if(currentModeTab === 'translate') {
+			const fromLang = document.getElementById('from-lang').value;
+			const examples = trans_examples[fromLang] || trans_examples.en;
+			document.getElementById('text-src').value = examples[n] || "";
+		}
+        updateRequestPreview();
+    }
+
+    function restartServer() {
+        let srv = serverUrl.value;
+        if(!srv) return;
+        fetch(srv+'/restart', {method:'POST'}).then(()=>{ showStatus("Перезагрузка...", false); setTimeout(()=>pingServer(true),3000); }).catch(e=>showStatus("Ошибка",true));
+    }
+	
+	// Функция пинга
+	async function pingServer(manual = false) {
+		const btn = document.getElementById('ping-btn');
+		const server = serverUrl.value;
+		
+		if (!server) return manual && showStatus('Введите URL сервера', true), false;
+		if (manual) { btn.textContent = '⏳'; btn.disabled = true; }
+		
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 2000);
+			const response = await fetch(server + '/ping', { signal: controller.signal });
+			clearTimeout(timeoutId);
+			
+			if (!response.ok) throw new Error('HTTP ' + response.status);
+			const data = await response.json();
+			if (data.message !== 'pong') throw new Error('Неверный ответ');
+			
+			btn.textContent = '🟢';
+			manual && showStatus('Сервер отвечает', false);
+			if (!lastPingSuccessful) {
+				currentPingIntervalMs = 30000;
+				restartPingInterval();
+				loadSpeakers();
+			}
+			lastPingSuccessful = true;
+			return true;
+		} catch (error) {
+			btn.textContent = '🔴';
+			manual && showStatus('Сервер не отвечает: ' + error.message, true);
+			if (lastPingSuccessful) {
+				currentPingIntervalMs = 3000;
+				restartPingInterval();
+			}
+			lastPingSuccessful = false;
+			return false;
+		} finally {
+			if (manual) btn.disabled = false;
+		}
+	}
+
+	// Запуск автоматического пинга
+	function startAutoPing() {
+		if (pingInterval) {
+			clearInterval(pingInterval);
+		}
+		pingServer(false);
+		pingInterval = setInterval(() => {
+			pingServer(false);
+		}, currentPingIntervalMs);
+	}
+
+	// Перезапуск интервала с новым значением
+	function restartPingInterval() {
+		if (pingInterval) {
+			clearInterval(pingInterval);
+			pingInterval = setInterval(() => {
+				pingServer(false);
+			}, currentPingIntervalMs);
+		}
+	}
+
+	// Остановка автоматического пинга
+	function stopAutoPing() {
+		if (pingInterval) {
+			clearInterval(pingInterval);
+			pingInterval = null;
+		}
+	}
+
+    // события вкладок
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+        currentModeTab = tabId;
+        if(tabId === 'translate') {
+            updateRequestPreview();
+        } else {
+            if(tabId === 'tts-server') updateFinalParams();
+            updateRequestPreview();
+        }
+    }
+
+    // инициализация событий
+    function bindUI() {
+        document.querySelectorAll('.tab-btn').forEach(btn => {btn.onclick = () => switchTab(btn.getAttribute('data-tab'));});
+		document.getElementById('ping-btn').onclick = pingServer(true);
+		document.getElementById('restart-btn').onclick = restartServer;
+        document.getElementById('spd-m').onclick = () => { speedVal = Math.max(-10, speedVal-0.5); document.getElementById('spd-val').value = speedVal.toFixed(1); updateFinalParams(); updateRequestPreview(); };
+        document.getElementById('spd-p').onclick = () => { speedVal = Math.min(10, speedVal+0.5); document.getElementById('spd-val').value = speedVal.toFixed(1); updateFinalParams(); updateRequestPreview(); };
+        document.getElementById('pch-m').onclick = () => { pitchVal = Math.max(-10, pitchVal-0.5); document.getElementById('pch-val').value = pitchVal.toFixed(1); updateFinalParams(); updateRequestPreview(); };
+        document.getElementById('pch-p').onclick = () => { pitchVal = Math.min(10, pitchVal+0.5); document.getElementById('pch-val').value = pitchVal.toFixed(1); updateFinalParams(); updateRequestPreview(); };
+		document.getElementById('clear-text-server').onclick = () => { document.getElementById('text-server').value = ''; updateRequestPreview(); };
+        document.getElementById('copy-text-server').onclick = () => { let t = document.getElementById('text-server'); t.select(); document.execCommand('copy'); };
+        document.getElementById('paste-text-server').onclick = async () => { let txt = await navigator.clipboard.readText(); document.getElementById('text-server').value = txt; updateRequestPreview(); };
+        document.getElementById('gen-server').onclick = genTTS;
+        document.getElementById('save-server').onclick = saveTTS;
+		document.getElementById('clear-text-raw').onclick = () => { document.getElementById('text-raw').value = ''; updateRequestPreview(); };
+        document.getElementById('copy-text-raw').onclick = () => { let t = document.getElementById('text-raw'); t.select(); document.execCommand('copy'); };
+        document.getElementById('paste-text-raw').onclick = async () => { let txt = await navigator.clipboard.readText(); document.getElementById('text-raw').value = txt; updateRequestPreview(); };
+        document.getElementById('gen-raw').onclick = genTTS;
+        document.getElementById('save-raw').onclick = saveTTS;
+        document.getElementById('stream-mode').onchange = () => updateRequestPreview();
+        document.getElementById('text-server').oninput = () => updateRequestPreview();
+        document.getElementById('text-raw').oninput = () => updateRequestPreview();
+        document.querySelectorAll('#put-accent, #put-yo, #put-stress-homo, #put-yo-homo, input[name="sr"]').forEach(el => el.onchange = () => updateRequestPreview());
+        // translate
+        document.getElementById('text-src').oninput = () => updateRequestPreview();
+        document.getElementById('from-lang').onchange = updateRequestPreview;
+        document.getElementById('to-lang').onchange = updateRequestPreview;
+        document.getElementById('translate-btn').onclick = doTranslate;
+        document.getElementById('clear-src').onclick = () => { document.getElementById('text-src').value = ''; updateRequestPreview(); };
+        document.getElementById('copy-src').onclick = () => { let t = document.getElementById('text-src'); t.select(); document.execCommand('copy'); };
+        document.getElementById('paste-src').onclick = async () => { let txt = await navigator.clipboard.readText(); document.getElementById('text-src').value = txt; updateRequestPreview(); };
+        document.getElementById('clear-dst').onclick = () => { document.getElementById('text-dst').value = ''; };
+        document.getElementById('copy-dst').onclick = () => { let t = document.getElementById('text-dst'); t.select(); document.execCommand('copy'); };
+        document.getElementById('paste-dst').onclick = async () => { let txt = await navigator.clipboard.readText(); document.getElementById('text-dst').value = txt; };
+        serverUrl.oninput = () => { updateRequestPreview(); loadSpeakers(); stopAutoPing(); startAutoPing(); };
+        window.setExample = setExample;
+        window.restartServer = restartServer;
+        window.loadSpeakers = loadSpeakers;
+    }
+
+    async function init() {
+        bindUI();
+        await loadSpeakers();
+        speedVal = 0; pitchVal = 0;
+        document.getElementById('spd-val').value = "0.0";
+        document.getElementById('pch-val').value = "0.0";
+        updateFinalParams();
+        switchTab('tts-server');
+		startAutoPing();
+    }
+    init();
+</script>
+</body>
+</html>
